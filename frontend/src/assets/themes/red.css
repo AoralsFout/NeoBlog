@@ -1,0 +1,5 @@
+[data-theme="red"]{
+    --color-primary: rgb(255, 0, 0);
+    --color-secondary: rgb(255, 102, 102);
+    --color-tertiary: rgb(255, 153, 153);
+}

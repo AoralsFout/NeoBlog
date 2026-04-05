@@ -1,7 +1,9 @@
 <script setup lang="ts"></script>
 
 <template>
-  <div>网站首页</div>
+  <div>
+    <router-view></router-view>
+  </div>
 </template>
 
 <style scoped></style>

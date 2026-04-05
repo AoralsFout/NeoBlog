@@ -1,0 +1,17 @@
+[data-theme="dark"] {
+    --color-primary: rgb(0, 0, 0);
+    --color-secondary: rgb(41, 41, 41);
+    --color-tertiary: rgb(71, 71, 71);
+
+    --bg-primary: #333333;
+    --bg-primart-reverse: #ffffff;
+
+    --bg-secondary: #222222;
+    --bg-secondary-reverse: #cccccc;
+
+    --text-primary: #cccccc;
+    --text-primary-reverse: #000000;
+
+    --text-secondary: #aaaaaa;
+    --text-secondary-reverse: #666666;
+}
