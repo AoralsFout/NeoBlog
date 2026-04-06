@@ -5,10 +5,6 @@
             <div class="background"></div>
             <div class="header-content">
                 <h1>NeoBlog</h1>
-                <div class="layout-controls">
-                    <Button :type="layout === '3' ? 'primary' : 'outline'" @click="layout = '3'">三栏</Button>
-                    <Button :type="layout === '2' ? 'primary' : 'outline'" @click="layout = '2'">两栏</Button>
-                </div>
             </div>
         </div>
         <div class="content">
@@ -43,11 +39,26 @@
                             </div>
                         </template>
                     </Card>
+                    <Card class="card">
+                        <template v-slot:header>
+                            <div>布局</div>
+                        </template>
+                        <template v-slot:body>
+                            <div class="card-body">
+                                <Button :type="layout === '3' ? 'primary' : 'outline'" size="sm"
+                                    @click="layout = '3'">三栏</Button>
+                                <Button :type="layout === '2' ? 'primary' : 'outline'" size="sm"
+                                    @click="layout = '2'">两栏</Button>
+                            </div>
+                        </template>
+                    </Card>
                     <Card v-if="showRightInLeft">
                         <template #header>右侧栏（移至左侧）</template>
                         <template #body>
-                            <p>右侧内容，例如标签云、最新评论、广告等。</p>
-                            <p>选择两栏布局时，此内容会移动到左侧。</p>
+                            <div class="card-body">
+                                <p>右侧内容，例如标签云、最新评论、广告等。</p>
+                                <p>选择两栏布局时，此内容会移动到左侧。</p>
+                            </div>
                         </template>
                     </Card>
                 </div>
@@ -55,17 +66,33 @@
                     <Card>
                         <template #header>主要内容区</template>
                         <template #body>
-                            <p>这里是博客文章列表或文章内容。</p>
-                            <p>中间区域较宽，用于显示核心内容。</p>
+                            <div class="card-body">
+                                <p>这里是博客文章列表或文章内容。</p>
+                                <p>这里是博客文章列表或文章内容。</p>
+                                <p>这里是博客文章列表或文章内容。</p>
+                                <p>这里是博客文章列表或文章内容。</p>
+                                <p>这里是博客文章列表或文章内容。</p>
+                                <p>这里是博客文章列表或文章内容。</p>
+                            </div>
                         </template>
                     </Card>
+                    <Footer />
                 </div>
                 <div class="right" v-if="showRight">
                     <Card>
-                        <template #header>右侧栏</template>
+                        <template #header>右侧卡片1</template>
                         <template #body>
-                            <p>右侧内容，例如标签云、最新评论、广告等。</p>
-                            <p>选择两栏布局时，此内容会移动到左侧。</p>
+                            <div class="card-body">
+                                <p>右侧内容</p>
+                            </div>
+                        </template>
+                    </Card>
+                    <Card>
+                        <template #header>右侧卡片2</template>
+                        <template #body>
+                            <div class="card-body">
+                                <p>右侧内容</p>
+                            </div>
                         </template>
                     </Card>
                 </div>
@@ -81,6 +108,7 @@ import { useThemeStore } from '@/stores/theme';
 import Button from '@/components/Button.vue';
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRadiusStore } from '@/stores/radius';
+import Footer from '@/components/Footer.vue';
 
 const themeStore = useThemeStore();
 const radiusStore = useRadiusStore();
@@ -132,13 +160,12 @@ const showRightInLeft = computed(() => effectiveLayout.value === '2' && windowWi
     position: relative;
     width: 100vw;
     min-height: 100vh;
-    background-color: rgb(0, 0, 0);
 }
 
 .header {
     width: 100%;
     height: 400px;
-    background-color: #f00;
+    background-color: var(--color-primary);
     position: relative;
 }
 
@@ -162,16 +189,10 @@ const showRightInLeft = computed(() => effectiveLayout.value === '2' && windowWi
     margin-bottom: 1rem;
 }
 
-.layout-controls {
-    display: flex;
-    gap: 1rem;
-}
-
 .content {
     width: 100%;
     padding: 2rem;
     box-sizing: border-box;
-    background-color: var(--bg-primary);
 }
 
 .layout {
@@ -223,32 +244,30 @@ const showRightInLeft = computed(() => effectiveLayout.value === '2' && windowWi
 
 .left {
     grid-area: left;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .main {
     grid-area: main;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .right {
     grid-area: right;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .card {
     width: 100%;
-    height: auto;
-    margin-bottom: 1rem;
 }
 
 .card-body {
     padding: 10px;
-}
-
-/* 左侧栏内Card间距 */
-.left :deep(.cardContainer) {
-    margin-bottom: 1.5rem;
-}
-
-.left :deep(.cardContainer):last-child {
-    margin-bottom: 0;
 }
 </style>

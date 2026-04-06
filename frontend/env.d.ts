@@ -8,3 +8,7 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+// git信息
+declare const __GIT_HASH__: string
+declare const __GIT_DATE__: string

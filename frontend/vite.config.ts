@@ -1,21 +1,48 @@
 import { fileURLToPath, URL } from 'node:url'
+import { execSync } from 'node:child_process'
 
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import vueDevTools from 'vite-plugin-vue-devtools'
+
+// 获取GIT信息，用于页脚显示git信息
+let gitHash = ''
+let gitDate = ''
+
+try {
+  gitHash = execSync('git rev-parse --short HEAD').toString().trim()
+  gitDate = new Date(execSync('git log -1 --format=%cd').toString().trim()).toISOString()
+} catch (e) {
+  console.error('Failed to get git info:', e)
+  gitHash = 'N/A'
+  gitDate = new Date().toISOString()
+}
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [
-    vue(),
-    vueDevTools(),
-  ],
-  server: {
-    port: 3000,
-  },
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd())
+  return {
+    define: {
+      __GIT_HASH__: JSON.stringify(gitHash),
+      __GIT_DATE__: JSON.stringify(gitDate),
     },
-  },
+    plugins: [
+      vue()
+    ],
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url))
+      },
+    },
+    server: {
+      port: 3000,
+      // 将 /api 请求代理到后端
+      proxy: {
+        '/api': {
+          target: env.VITE_API_BASE_URL,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api/, '/v1'),
+        }
+      }
+    }
+  }
 })
