@@ -3,21 +3,73 @@
         <Navigation />
         <div class="header">
             <div class="background"></div>
+            <div class="header-content">
+                <h1>NeoBlog</h1>
+                <div class="layout-controls">
+                    <Button :type="layout === '3' ? 'primary' : 'outline'" @click="layout = '3'">三栏</Button>
+                    <Button :type="layout === '2' ? 'primary' : 'outline'" @click="layout = '2'">两栏</Button>
+                </div>
+            </div>
         </div>
         <div class="content">
-            <Card class="card">
-                <template v-slot:header>
-                    <div>Card Title</div>
-                </template>
-                <template v-slot:body>
-                    <div>Card Content</div>
-                    <Button @click="changeTheme('blue')" size="sm" type="primary">更改主题（蓝）</Button>
-                    <Button @click="changeTheme('pink')" size="sm" type="secondary">更改主题（粉）</Button>
-                    <Button @click="changeTheme('red')" size="sm" type="outline">更改主题（红）</Button>
-                    <Button @click="changeTheme('green')" size="sm" type="ghost">更改主题（绿）</Button>
-                    <Button @click="changeTheme('dark')" size="sm" type="danger">更改主题（黑）</Button>
-                </template>
-            </Card>
+            <div class="layout" :class="`layout-${effectiveLayout}`">
+                <div class="left">
+                    <Card class="card">
+                        <template v-slot:header>
+                            <div>主题</div>
+                        </template>
+                        <template v-slot:body>
+                            <div class="card-body">
+                                <Button @click="changeTheme('blue')" size="sm" type="primary">蓝</Button>
+                                <Button @click="changeTheme('pink')" size="sm" type="primary">粉</Button>
+                                <Button @click="changeTheme('red')" size="sm" type="primary">红</Button>
+                                <Button @click="changeTheme('green')" size="sm" type="primary">绿</Button>
+                                <Button @click="changeTheme('dark')" size="sm" type="primary">黑</Button>
+                            </div>
+                        </template>
+                    </Card>
+                    <Card class="card">
+                        <template v-slot:header>
+                            <div>圆角</div>
+                        </template>
+                        <template v-slot:body>
+                            <div class="card-body">
+                                <Button @click="changeRadius('small')" size="sm" type="outline"
+                                    style="border-radius: 4px;">小</Button>
+                                <Button @click="changeRadius('medium')" size="sm" type="outline"
+                                    style="border-radius: 8px;">中</Button>
+                                <Button @click="changeRadius('large')" size="sm" type="outline"
+                                    style="border-radius: 12px;">大</Button>
+                            </div>
+                        </template>
+                    </Card>
+                    <Card v-if="showRightInLeft">
+                        <template #header>右侧栏（移至左侧）</template>
+                        <template #body>
+                            <p>右侧内容，例如标签云、最新评论、广告等。</p>
+                            <p>选择两栏布局时，此内容会移动到左侧。</p>
+                        </template>
+                    </Card>
+                </div>
+                <div class="main">
+                    <Card>
+                        <template #header>主要内容区</template>
+                        <template #body>
+                            <p>这里是博客文章列表或文章内容。</p>
+                            <p>中间区域较宽，用于显示核心内容。</p>
+                        </template>
+                    </Card>
+                </div>
+                <div class="right" v-if="showRight">
+                    <Card>
+                        <template #header>右侧栏</template>
+                        <template #body>
+                            <p>右侧内容，例如标签云、最新评论、广告等。</p>
+                            <p>选择两栏布局时，此内容会移动到左侧。</p>
+                        </template>
+                    </Card>
+                </div>
+            </div>
         </div>
     </div>
 </template>
@@ -27,12 +79,51 @@ import Navigation from '@/components/Navigation.vue';
 import Card from '@/components/Card.vue';
 import { useThemeStore } from '@/stores/theme';
 import Button from '@/components/Button.vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { useRadiusStore } from '@/stores/radius';
 
 const themeStore = useThemeStore();
-
+const radiusStore = useRadiusStore();
 const changeTheme = (theme: string) => {
     themeStore.setTheme(theme);
 }
+const changeRadius = (radius: string) => {
+    radiusStore.setRadius(radius);
+}
+
+const layout = ref('3');
+const windowWidth = ref(window.innerWidth);
+
+const handleResize = () => {
+    windowWidth.value = window.innerWidth;
+};
+
+onMounted(() => {
+    window.addEventListener('resize', handleResize);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('resize', handleResize);
+});
+
+// 有效布局：小屏幕强制两栏，手机强制单栏（通过CSS处理）
+const effectiveLayout = computed(() => {
+    if (windowWidth.value <= 768) {
+        // 手机屏幕，CSS会强制单栏，但布局值保持用户选择（不影响）
+        return layout.value;
+    }
+    if (windowWidth.value <= 1024) {
+        // 小屏幕强制两栏
+        return '2';
+    }
+    return layout.value;
+});
+
+// 是否显示右侧栏（三栏或手机屏幕）
+const showRight = computed(() => effectiveLayout.value === '3' || windowWidth.value <= 768);
+
+// 是否在左侧显示右侧内容（两栏且非手机屏幕）
+const showRightInLeft = computed(() => effectiveLayout.value === '2' && windowWidth.value > 768);
 </script>
 
 <style scoped>
@@ -40,23 +131,124 @@ const changeTheme = (theme: string) => {
     display: block;
     position: relative;
     width: 100vw;
-    height: 100vh;
+    min-height: 100vh;
     background-color: rgb(0, 0, 0);
+}
 
-    >.header {
-        width: 100%;
-        height: 400px;
-        background-color: #f00;
+.header {
+    width: 100%;
+    height: 400px;
+    background-color: #f00;
+    position: relative;
+}
+
+.header-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    text-align: center;
+    z-index: 1;
+}
+
+.header-content h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.layout-controls {
+    display: flex;
+    gap: 1rem;
+}
+
+.content {
+    width: 100%;
+    padding: 2rem;
+    box-sizing: border-box;
+    background-color: var(--bg-primary);
+}
+
+.layout {
+    display: grid;
+    gap: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* 三栏布局 */
+.layout-3 {
+    grid-template-columns: 1fr 3fr 1fr;
+    grid-template-areas: "left main right";
+}
+
+/* 两栏布局 */
+.layout-2 {
+    grid-template-columns: 1fr 3fr;
+    grid-template-areas: "left main";
+}
+
+.layout-2 .right {
+    display: none;
+}
+
+/* 手机屏幕单栏 */
+@media (max-width: 768px) {
+    .layout {
+        grid-template-columns: 1fr;
+        grid-template-areas: "main" "left" "right";
     }
 
-    >.content {
-        width: 100%;
-        background-color: #0f0;
+    .layout .right {
+        display: block;
+    }
+
+    /* 覆盖两栏和三栏 */
+    .layout-2,
+    .layout-3 {
+        grid-template-columns: 1fr;
+        grid-template-areas: "main" "left" "right";
+    }
+
+    .layout-2 .right,
+    .layout-3 .right {
+        display: block;
     }
 }
 
+.left {
+    grid-area: left;
+}
+
+.main {
+    grid-area: main;
+}
+
+.right {
+    grid-area: right;
+}
+
 .card {
-    width: 300px;
-    height: 200px;
+    width: 100%;
+    height: auto;
+    margin-bottom: 1rem;
+}
+
+.card-body {
+    padding: 10px;
+}
+
+/* 左侧栏内Card间距 */
+.left :deep(.cardContainer) {
+    margin-bottom: 1.5rem;
+}
+
+.left :deep(.cardContainer):last-child {
+    margin-bottom: 0;
 }
 </style>

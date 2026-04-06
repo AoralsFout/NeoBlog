@@ -57,13 +57,14 @@ const handleClick = (event: MouseEvent) => {
     align-items: center;
     justify-content: center;
     font-weight: 500;
-    border-radius: 0.375rem;
+    border-radius: var(--radius-small);
     transition: all 0.2s ease-in-out;
     cursor: pointer;
     border: none;
     margin: 2px;
     outline: none;
     line-height: 1.5;
+    user-select: none;
 }
 
 .neo-btn:disabled,

@@ -38,7 +38,7 @@ const URL = import.meta.env.VITE_API_BASE_URL;
     margin: 0 auto;
     padding: 1rem;
     background-color: var(--bg-primary);
-    border-radius: 24px;
+    border-radius: var(--radius-large);
     box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
     z-index: 1;
 
@@ -49,6 +49,7 @@ const URL = import.meta.env.VITE_API_BASE_URL;
             width: 100%;
             height: 100%;
             user-select: none;
+            -webkit-user-drag: none;
         }
     }
 

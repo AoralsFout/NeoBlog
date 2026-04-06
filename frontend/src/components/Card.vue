@@ -3,7 +3,7 @@
         <div class="card-header">
             <slot name="header"></slot>
         </div>
-        <div class="card-body">
+        <div>
             <slot name="body"></slot>
         </div>
     </div>
@@ -18,7 +18,7 @@
     flex-direction: column;
 
     background-color: var(--bg-primary);
-    border-radius: 12px;
+    border-radius: var(--radius-small);
     box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
 
     >.card-header{

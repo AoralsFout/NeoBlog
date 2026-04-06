@@ -4,3 +4,21 @@ body {
     font-family: 'Jetbrains Mono', 'Maple Mono CN', monospace;
     color: var(--text-primary);
 }
+
+::-webkit-scrollbar{
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track{
+    background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb{
+    border-radius: 4px;
+    background: var(--color-primary);
+}
+
+::-webkit-scrollbar-thumb:hover{
+    background: var(--color-secondary);
+}
