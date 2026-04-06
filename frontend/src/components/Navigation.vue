@@ -42,6 +42,8 @@ const URL = import.meta.env.VITE_API_BASE_URL;
     box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
     z-index: 1;
 
+    transition: background-color 0.2s ease-in-out;
+
     >.logo {
         width: 150px;
 

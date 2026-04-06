@@ -4,6 +4,8 @@ body {
     font-family: 'Jetbrains Mono', 'Maple Mono CN', monospace;
     background-color: var(--bg-secondary);
     color: var(--text-primary);
+
+    transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out;
 }
 
 ::-webkit-scrollbar{
@@ -13,13 +15,16 @@ body {
 
 ::-webkit-scrollbar-track{
     background: var(--bg-secondary);
+    transition: background 0.2s ease-in-out;
 }
 
 ::-webkit-scrollbar-thumb{
     border-radius: 4px;
     background: var(--color-primary);
+    transition: background 0.2s ease-in-out;
 }
 
 ::-webkit-scrollbar-thumb:hover{
     background: var(--color-secondary);
+    transition: background 0.2s ease-in-out;
 }

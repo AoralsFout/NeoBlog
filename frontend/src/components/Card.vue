@@ -20,6 +20,8 @@
     border-radius: var(--radius-small);
     box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
 
+    transition: background-color 0.2s ease-in-out;
+
     >.card-header{
         position: relative;
         padding: 10px 10px 10px 20px;

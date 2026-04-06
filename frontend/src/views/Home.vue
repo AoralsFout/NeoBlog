@@ -167,6 +167,8 @@ const showRightInLeft = computed(() => effectiveLayout.value === '2' && windowWi
     height: 400px;
     background-color: var(--color-primary);
     position: relative;
+
+    transition: background-color 0.3s ease-in-out;
 }
 
 .header-content {
