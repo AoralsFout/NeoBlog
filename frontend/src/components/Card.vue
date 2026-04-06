@@ -28,7 +28,7 @@
         font-size: 16px;
         font-weight: bold;
 
-        border-bottom: 1px dashed #ccc;
+        border-bottom: 1px dashed var(--color-primary);
 
         &::after{
             content: '';

@@ -1,16 +1,8 @@
-:root{
+:root {
     --bg-primary: #ffffff;
-    --bg-primart-reverse: #000000;
+    --bg-secondary: #f8f9fa;
 
-    --bg-secondary: #fafafa;
-    --bg-secondary-reverse: #333333;
-
-    --text-primary: #000000;
-    --text-primary-reverse: #ffffff;
-
-    --text-secondary: #666666;
-    --text-secondary-reverse: #cccccc;
-    
-    --text-tertiary: #999999;
-    --text-tertiary-reverse: #aaaaaa;
+    --text-primary: #1a1a1a;
+    --text-secondary: #595959;
+    --text-tertiary: #8c8c8c;
 }

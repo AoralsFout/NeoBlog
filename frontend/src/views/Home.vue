@@ -11,11 +11,11 @@
                 </template>
                 <template v-slot:body>
                     <div>Card Content</div>
-                    <button @click="changeTheme('blue')">更改主题（蓝）</button>
-                    <button @click="changeTheme('pink')">更改主题（粉）</button>
-                    <button @click="changeTheme('red')">更改主题（红）</button>
-                    <button @click="changeTheme('green')">更改主题（绿）</button>
-                    <button @click="changeTheme('dark')">更改主题（黑）</button>
+                    <Button @click="changeTheme('blue')" size="sm" type="primary">更改主题（蓝）</Button>
+                    <Button @click="changeTheme('pink')" size="sm" type="secondary">更改主题（粉）</Button>
+                    <Button @click="changeTheme('red')" size="sm" type="outline">更改主题（红）</Button>
+                    <Button @click="changeTheme('green')" size="sm" type="ghost">更改主题（绿）</Button>
+                    <Button @click="changeTheme('dark')" size="sm" type="danger">更改主题（黑）</Button>
                 </template>
             </Card>
         </div>
@@ -25,9 +25,13 @@
 <script setup lang="ts">
 import Navigation from '@/components/Navigation.vue';
 import Card from '@/components/Card.vue';
+import { useThemeStore } from '@/stores/theme';
+import Button from '@/components/Button.vue';
+
+const themeStore = useThemeStore();
 
 const changeTheme = (theme: string) => {
-    document.documentElement.setAttribute('data-theme', theme);
+    themeStore.setTheme(theme);
 }
 </script>
 
@@ -39,13 +43,13 @@ const changeTheme = (theme: string) => {
     height: 100vh;
     background-color: rgb(0, 0, 0);
 
-    >.header{
+    >.header {
         width: 100%;
         height: 400px;
         background-color: #f00;
     }
 
-    >.content{
+    >.content {
         width: 100%;
         background-color: #0f0;
     }

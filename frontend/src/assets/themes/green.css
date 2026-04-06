@@ -1,5 +1,6 @@
-[data-theme="green"]{
-    --color-primary: rgb(0, 255, 0);
-    --color-secondary: rgb(74, 235, 74);
-    --color-tertiary: rgb(96, 197, 96);
+[data-theme="green"] {
+    --color-primary: #00a86b;
+    --color-secondary: #5cdb95;
+    --color-tertiary: #edf5e1;
+    --text-on-color: #ffffff;
 }

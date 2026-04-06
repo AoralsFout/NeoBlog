@@ -1,5 +1,6 @@
-[data-theme="pink"]{
-    --color-primary: rgb(248, 90, 182);
-    --color-secondary: rgb(238, 123, 171);
-    --color-tertiary: rgb(233, 158, 202);
+[data-theme="pink"] {
+    --color-primary: #eb2f96;
+    --color-secondary: #ff85c0;
+    --color-tertiary: #fff0f6;
+    --text-on-color: #ffffff;
 }
