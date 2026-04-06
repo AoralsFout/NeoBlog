@@ -20,7 +20,7 @@
     border-radius: var(--radius-small);
     box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
 
-    transition: background-color 0.2s ease-in-out;
+    transition: background-color 0.2s ease-in-out,border-radius 0.2s ease-in-out;
 
     >.card-header{
         position: relative;
@@ -36,10 +36,13 @@
             position: absolute;
             top: 10px;
             left: 10px;
-            width: 5px;
+            width: 6px;
+            border-radius: 3px;
             height: calc(100% - 20px);
 
             background-color: var(--color-primary);
+
+            transition: background-color 0.2s ease-in-out;
         }
     }
 }

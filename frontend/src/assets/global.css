@@ -4,6 +4,7 @@ body {
     font-family: 'Jetbrains Mono', 'Maple Mono CN', monospace;
     background-color: var(--bg-secondary);
     color: var(--text-primary);
+    overflow-x: hidden;
 
     transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out;
 }

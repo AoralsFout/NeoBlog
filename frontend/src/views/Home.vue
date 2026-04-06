@@ -64,15 +64,18 @@
                 </div>
                 <div class="main">
                     <Card>
-                        <template #header>主要内容区</template>
+                        <template #header>路由内容区</template>
                         <template #body>
                             <div class="card-body">
-                                <p>这里是博客文章列表或文章内容。</p>
-                                <p>这里是博客文章列表或文章内容。</p>
-                                <p>这里是博客文章列表或文章内容。</p>
-                                <p>这里是博客文章列表或文章内容。</p>
-                                <p>这里是博客文章列表或文章内容。</p>
-                                <p>这里是博客文章列表或文章内容。</p>
+                                <p>路由内容。</p>
+                                <p>路由内容。</p>
+                                <p>路由内容。</p>
+                                <p>路由内容。</p>
+                                <p>路由内容。</p>
+                                <p>路由内容。</p>
+                                <p>路由内容。</p>
+                                <p>路由内容。</p>
+                                <p>路由内容。</p>
                             </div>
                         </template>
                     </Card>
@@ -83,7 +86,7 @@
                         <template #header>右侧卡片1</template>
                         <template #body>
                             <div class="card-body">
-                                <p>右侧内容</p>
+                                <p>Ciallo～(∠・ω< )⌒★</p>
                             </div>
                         </template>
                     </Card>
@@ -91,7 +94,7 @@
                         <template #header>右侧卡片2</template>
                         <template #body>
                             <div class="card-body">
-                                <p>右侧内容</p>
+                                <p>Ciallo～(∠・ω< )⌒★</p>
                             </div>
                         </template>
                     </Card>
@@ -240,7 +243,7 @@ const showRightInLeft = computed(() => effectiveLayout.value === '2' && windowWi
 
     .layout-2 .right,
     .layout-3 .right {
-        display: block;
+        display: flex;
     }
 }
 

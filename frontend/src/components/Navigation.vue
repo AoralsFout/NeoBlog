@@ -22,7 +22,7 @@ const URL = import.meta.env.VITE_API_BASE_URL;
 </script>
 
 <style scoped>
-.NavigationContainer{
+.NavigationContainer {
     position: absolute;
     width: calc(100vw - 20px);
     padding: 10px;
@@ -42,7 +42,7 @@ const URL = import.meta.env.VITE_API_BASE_URL;
     box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
     z-index: 1;
 
-    transition: background-color 0.2s ease-in-out;
+    transition: background-color 0.2s ease-in-out, border-radius 0.2s ease-in-out;
 
     >.logo {
         width: 150px;
@@ -80,6 +80,8 @@ const URL = import.meta.env.VITE_API_BASE_URL;
             border-radius: 50%;
             background-color: var(--color-primary);
             cursor: pointer;
+
+            transition: background-color 0.2s ease-in-out;
         }
     }
 }

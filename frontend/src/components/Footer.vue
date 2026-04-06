@@ -2,7 +2,7 @@
     <div class="FooterContainer">
         <div>AoralsFoutの小窝</div>
         <div>© {{ currentYear }} AoralsFout</div>
-        <div><a href="https://beian.miit.gov.cn/" target="_blank">冀ICP备2026000000号</a></div>
+        <div><a href="https://beian.miit.gov.cn/" target="_blank">冀ICP备不知道多少号</a></div>
         <div>
             <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg"
                 xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512">
