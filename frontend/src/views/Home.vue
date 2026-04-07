@@ -2,7 +2,12 @@
     <div class="container">
         <Navigation />
         <div class="header">
-            <div class="background"></div>
+            <div class="fliter" :class="{ 'dark': theme === 'dark' }"></div>
+            <div class="wallpapers" ref="wallpapers">
+                <!-- 添加两个图片容器用于交叉淡入淡出 -->
+                <img class="wallpaper active" src="https://t.alcy.cc/pc/" />
+                <img class="wallpaper" />
+            </div>
             <div class="header-content">
                 <h1>NeoBlog</h1>
             </div>
@@ -109,18 +114,21 @@ import Navigation from '@/components/Navigation.vue';
 import Card from '@/components/Card.vue';
 import { useThemeStore } from '@/stores/theme';
 import Button from '@/components/Button.vue';
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed, onBeforeUnmount, watch } from 'vue';
 import { useRadiusStore } from '@/stores/radius';
 import Footer from '@/components/Footer.vue';
 
 const themeStore = useThemeStore();
 const radiusStore = useRadiusStore();
 const changeTheme = (theme: string) => {
+    console.log('changeTheme called:', theme);
     themeStore.setTheme(theme);
 }
 const changeRadius = (radius: string) => {
     radiusStore.setRadius(radius);
 }
+
+const theme = computed(() => themeStore.theme);
 
 const layout = ref('3');
 const windowWidth = ref(window.innerWidth);
@@ -155,6 +163,101 @@ const showRight = computed(() => effectiveLayout.value === '3' || windowWidth.va
 
 // 是否在左侧显示右侧内容（两栏且非手机屏幕）
 const showRightInLeft = computed(() => effectiveLayout.value === '2' && windowWidth.value > 768);
+
+const wallpapers = ref<HTMLDivElement | null>(null)
+// 壁纸切换器
+const images = ref<HTMLImageElement[]>([])
+const activeIndex = ref(0)
+const nextIndex = ref(1)
+let intervalId: number | undefined = undefined;
+
+const initWallpaperSwitcher = () => {
+    if (wallpapers.value) {
+        images.value = Array.from(wallpapers.value.querySelectorAll('img'))
+    }
+
+    // 设置初始图片
+    if (images.value[activeIndex.value]) {
+        images.value[activeIndex.value]!.classList.add('active')
+    }
+
+    // 每15秒切换一次（可根据需要调整）
+    intervalId = setInterval(switchWallpaper, 15000);
+}
+
+const switchWallpaper = () => {
+    // 预加载下一张图片
+    preloadNextImage().then(() => {
+        // 淡出当前图片
+        if (images.value[activeIndex.value]) {
+            images.value[activeIndex.value]!.classList.remove('active')
+        }
+
+        // 淡入新图片
+        // setTimeout(() => {
+        if (images.value[nextIndex.value]) {
+            images.value[nextIndex.value]!.classList.add('active')
+        }
+
+        // 更新索引
+        [activeIndex.value, nextIndex.value] = [nextIndex.value, activeIndex.value]
+        // }, 100)
+    })
+}
+
+const preloadNextImage = () => {
+    return new Promise<void>((resolve) => {
+        // 生成带时间戳的新URL避免缓存
+        const newUrl = `https://t.alcy.cc/pc/?t=${Date.now()}`
+        const img = new Image()
+
+        img.onload = () => {
+            if (images.value[nextIndex.value]) {
+                images.value[nextIndex.value]!.src = newUrl
+            }
+            resolve()
+        }
+
+        img.onerror = () => {
+            // 失败时重试
+            setTimeout(() => preloadNextImage(), 1000)
+        }
+
+        img.src = newUrl
+    })
+}
+
+// 动画
+let angle = 0;
+const animation = () => {
+    //镜头摇晃动画
+    let speed = 1
+    //speed扰动
+    speed = speed + Math.cos(angle) * Math.sin(angle)
+    const radius = 10
+    const position: [number, number] = [radius * Math.cos(angle) * speed, radius * Math.sin(angle) * speed]
+    angle += 0.01
+    // 壁纸动画
+    if (wallpapers.value) {
+        wallpapers.value.style.transform = `
+            translateX(${position[0] * 1}px)
+            translateY(${position[1] * 1}px)
+        `
+    }
+
+    requestAnimationFrame(animation)
+}
+
+onMounted(() => {
+    animation()
+    initWallpaperSwitcher()
+})
+
+onBeforeUnmount(() => {
+    if (intervalId) {
+        clearInterval(intervalId)
+    }
+})
 </script>
 
 <style scoped>
@@ -170,8 +273,63 @@ const showRightInLeft = computed(() => effectiveLayout.value === '2' && windowWi
     height: 400px;
     background-color: var(--color-primary);
     position: relative;
+    z-index: 0;
+    overflow: hidden;
 
     transition: background-color 0.3s ease-in-out;
+}
+
+.fliter {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    z-index: 3;
+    /* 背景模糊效果 */
+    backdrop-filter: blur(30px);
+    /* 径向渐变遮罩实现光圈效果 - 中心清晰，边缘模糊 */
+    -webkit-mask-image: radial-gradient(circle at center,
+            transparent 10%,
+            /* 中心30%区域完全透明（不模糊） */
+            black 80%
+            /* 从30%到70%过渡到完全模糊 */
+        );
+    mask-image: radial-gradient(circle at center,
+            transparent 10%,
+            black 80%);
+
+    &.dark {
+        background-color: rgba(0, 0, 0, 0.6);
+    }
+}
+
+/* 壁纸 */
+.wallpapers {
+    position: relative;
+    object-fit: cover;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.5s ease-out;
+    overflow: hidden;
+    scale: 1.1;
+}
+
+.wallpaper {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    object-fit: cover;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 1.5s ease-in-out;
+    z-index: 0;
+    background-repeat: repeat;
+}
+
+.wallpaper.active {
+    opacity: 1;
+    will-change: transform, opacity;
 }
 
 .header-content {
@@ -195,6 +353,8 @@ const showRightInLeft = computed(() => effectiveLayout.value === '2' && windowWi
 }
 
 .content {
+    position: relative;
+    z-index: 1;
     width: 100%;
     padding: 2rem;
     box-sizing: border-box;

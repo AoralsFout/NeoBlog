@@ -17,8 +17,11 @@ export const useThemeStore = defineStore("theme", () => {
     }
 
     const setTheme = (themeName?: string) => {
-        localStorage.setItem("theme", themeName || theme.value);
-        document.documentElement.setAttribute("data-theme", themeName || theme.value);
+        if (themeName) {
+            theme.value = themeName;
+        }
+        localStorage.setItem("theme", theme.value);
+        document.documentElement.setAttribute("data-theme", theme.value);
     }
 
     return { theme, initTheme, setTheme };

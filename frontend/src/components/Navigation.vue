@@ -26,6 +26,7 @@ const URL = import.meta.env.VITE_API_BASE_URL;
     position: absolute;
     width: calc(100vw - 20px);
     padding: 10px;
+    z-index: 9999;
 }
 
 .navigation-bar {
@@ -37,12 +38,18 @@ const URL = import.meta.env.VITE_API_BASE_URL;
     align-items: center;
     margin: 0 auto;
     padding: 1rem;
-    background-color: var(--bg-primary);
+    background-color: color-mix(in srgb, var(--bg-primary) 20%, transparent);
+    backdrop-filter: blur(10px);
     border-radius: var(--radius-large);
     box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
     z-index: 1;
+    transform: scale(1);
 
-    transition: background-color 0.2s ease-in-out, border-radius 0.2s ease-in-out;
+    transition: background-color 0.2s ease-in-out, border-radius 0.2s ease-in-out, transform 0.2s ease-in-out;
+
+    &:hover{
+        transform: scale(1.01);
+    }
 
     >.logo {
         width: 150px;
