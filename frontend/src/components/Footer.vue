@@ -2,7 +2,7 @@
     <div class="FooterContainer">
         <div>AoralsFoutの小窝</div>
         <div>© {{ currentYear }} AoralsFout</div>
-        <div><a href="https://beian.miit.gov.cn/" target="_blank">冀ICP备不知道多少号</a></div>
+        <div><a href="https://beian.miit.gov.cn/" target="_blank">冀ICP备2026011544号</a></div>
         <div>
             <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg"
                 xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512">
@@ -55,14 +55,14 @@ const formattedDate = new Date(gitDate).toLocaleString('zh-CN', {
 }
 
 .FooterContainer a {
-    color: var(--color-primary, #0066cc);
+    color: var(--text-secondary);
     text-decoration: none;
     transition: color 0.2s ease;
 }
 
 .FooterContainer a:hover {
-    color: var(--color-secondary, #4da6ff);
-    text-decoration: underline;
+    color: var(--text-tertiary, #4da6ff);
+    text-decoration: none;
 }
 
 .FooterContainer svg {

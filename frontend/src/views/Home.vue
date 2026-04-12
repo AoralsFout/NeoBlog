@@ -11,6 +11,9 @@
             <div class="header-content">
                 <h1>NeoBlog</h1>
             </div>
+            <div class="dynamic">
+                <canvas ref="waveCanvas"></canvas>
+            </div>
         </div>
         <div class="content">
             <div class="layout" :class="`layout-${effectiveLayout}`">
@@ -133,17 +136,6 @@ const theme = computed(() => themeStore.theme);
 const layout = ref('3');
 const windowWidth = ref(window.innerWidth);
 
-const handleResize = () => {
-    windowWidth.value = window.innerWidth;
-};
-
-onMounted(() => {
-    window.addEventListener('resize', handleResize);
-});
-
-onUnmounted(() => {
-    window.removeEventListener('resize', handleResize);
-});
 
 // 有效布局：小屏幕强制两栏，手机强制单栏（通过CSS处理）
 const effectiveLayout = computed(() => {
@@ -165,6 +157,7 @@ const showRight = computed(() => effectiveLayout.value === '3' || windowWidth.va
 const showRightInLeft = computed(() => effectiveLayout.value === '2' && windowWidth.value > 768);
 
 const wallpapers = ref<HTMLDivElement | null>(null)
+const waveCanvas = ref<HTMLCanvasElement | null>(null)
 // 壁纸切换器
 const images = ref<HTMLImageElement[]>([])
 const activeIndex = ref(0)
@@ -227,8 +220,83 @@ const preloadNextImage = () => {
     })
 }
 
-// 动画
+// 波浪动画
+let waveCtx: CanvasRenderingContext2D | null = null
+let waveTime = 0
+let secondaryWaveTime = 0
+const waveAmplitude = 20
+const waveFrequency = 0.005
+const waveSpeed = 0.05
+const secondaryWaveAmplitude = 40 // 后方波浪振幅
+const secondaryWaveFrequency = 0.005 // 后方波浪频率
+const secondaryWaveSpeed = 0.03 // 后方波浪速度
+const secondaryWavePhase = Math.PI / 2 // 初始相位差90度
+
+const initWaveCanvas = () => {
+    if (!waveCanvas.value) return
+    waveCtx = waveCanvas.value.getContext('2d')
+    resizeWaveCanvas()
+    window.addEventListener('resize', resizeWaveCanvas)
+}
+
+const resizeWaveCanvas = () => {
+    if (!waveCanvas.value || !waveCtx) return
+    const dpr = window.devicePixelRatio || 1
+    const rect = waveCanvas.value.getBoundingClientRect()
+    waveCanvas.value.width = rect.width * dpr
+    waveCanvas.value.height = rect.height * dpr
+    waveCtx.setTransform(1, 0, 0, 1, 0, 0)
+    waveCtx.scale(dpr, dpr)
+}
+
+const drawWaves = () => {
+    if (!waveCanvas.value || !waveCtx) return
+    const width = waveCanvas.value.clientWidth
+    const height = waveCanvas.value.clientHeight
+
+    // 清除画布
+    waveCtx.clearRect(0, 0, width, height)
+
+    // 获取CSS颜色变量
+    const rootStyle = getComputedStyle(document.documentElement)
+    const bgSecondary = rootStyle.getPropertyValue('--bg-secondary').trim()
+    const colorPrimary = rootStyle.getPropertyValue('--color-primary').trim()
+
+    // 绘制后方波浪（--color-primary）
+    waveCtx.beginPath()
+    waveCtx.moveTo(0, height / 2)
+    for (let x = 0; x <= width; x += 1) {
+        const y = height / 2 + Math.sin(x * secondaryWaveFrequency + secondaryWaveTime + secondaryWavePhase) * secondaryWaveAmplitude
+        waveCtx.lineTo(x, y)
+    }
+    waveCtx.lineTo(width, height)
+    waveCtx.lineTo(0, height)
+    waveCtx.closePath()
+    waveCtx.fillStyle = colorPrimary || '#333333'
+    waveCtx.globalAlpha = 0.8
+    waveCtx.fill()
+    waveCtx.globalAlpha = 1
+
+    // 绘制主波浪（--bg-secondary）
+    waveCtx.beginPath()
+    waveCtx.moveTo(0, height / 2)
+    for (let x = 0; x <= width; x += 1) {
+        const y = height / 2 + Math.sin(x * waveFrequency + waveTime) * waveAmplitude
+        waveCtx.lineTo(x, y)
+    }
+    waveCtx.lineTo(width, height)
+    waveCtx.lineTo(0, height)
+    waveCtx.closePath()
+    waveCtx.fillStyle = bgSecondary || '#f8f9fa'
+    waveCtx.fill()
+
+    waveTime += waveSpeed
+    secondaryWaveTime += secondaryWaveSpeed
+}
+
+// 镜头动画
 let angle = 0;
+let animationFrameId: number | undefined = undefined;
 const animation = () => {
     //镜头摇晃动画
     let speed = 1
@@ -245,18 +313,26 @@ const animation = () => {
         `
     }
 
-    requestAnimationFrame(animation)
+    // 绘制波浪
+    drawWaves()
+
+    animationFrameId = requestAnimationFrame(animation)
 }
 
 onMounted(() => {
     animation()
     initWallpaperSwitcher()
+    initWaveCanvas()
 })
 
 onBeforeUnmount(() => {
     if (intervalId) {
         clearInterval(intervalId)
     }
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId)
+    }
+    window.removeEventListener('resize', resizeWaveCanvas)
 })
 </script>
 
@@ -270,13 +346,27 @@ onBeforeUnmount(() => {
 
 .header {
     width: 100%;
-    height: 400px;
+    height: 60vh;
     background-color: var(--color-primary);
     position: relative;
     z-index: 0;
     overflow: hidden;
 
     transition: background-color 0.3s ease-in-out;
+}
+
+.dynamic {
+    position: absolute;
+    width: 100%;
+    height: 100px;
+    bottom: 0;
+    z-index: 4;
+}
+
+.dynamic canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
 }
 
 .fliter {
