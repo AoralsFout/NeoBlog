@@ -7,8 +7,20 @@ const router = createRouter({
       path: '/',
       name: '首页',
       component: () => import('@/views/Home.vue'),
+      redirect: '/articles',
+      children: [
+        {
+          path: '/articles',
+          name: '文章',
+          component: () => import('@/views/Articles.vue'),
+        },
+        {
+          path: '/settings',
+          name: '设置',
+          component: () => import('@/views/Settings.vue'),
+        },
+      ],
     },
-    // 404
     {
       path: '/:catchAll(.*)',
       name: '404',

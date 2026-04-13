@@ -5,8 +5,9 @@
                 <img :src="URL + '/images/logo.png'" alt="" srcset="">
             </div>
             <div class="selections">
-                <router-link to="/">Home</router-link>
-                <router-link to="/about">About</router-link>
+                <router-link to="/" active-class="active">首页</router-link>
+                <router-link to="/articles" active-class="active">文章列表</router-link>
+                <router-link to="/settings" active-class="active">设置</router-link>
             </div>
             <div class="actions">
                 <div class="button"></div>
@@ -47,7 +48,7 @@ const URL = import.meta.env.VITE_API_BASE_URL;
 
     transition: background-color 0.2s ease-in-out, border-radius 0.2s ease-in-out, transform 0.2s ease-in-out;
 
-    &:hover{
+    &:hover {
         transform: scale(1.01);
     }
 

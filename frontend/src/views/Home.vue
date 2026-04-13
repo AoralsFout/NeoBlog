@@ -20,44 +20,10 @@
                 <div class="left">
                     <Card class="card">
                         <template v-slot:header>
-                            <div>主题</div>
+                            <div>关于我</div>
                         </template>
                         <template v-slot:body>
-                            <div class="card-body">
-                                <Button @click="changeTheme('blue')" size="sm" type="primary">蓝</Button>
-                                <Button @click="changeTheme('pink')" size="sm" type="primary">粉</Button>
-                                <Button @click="changeTheme('red')" size="sm" type="primary">红</Button>
-                                <Button @click="changeTheme('green')" size="sm" type="primary">绿</Button>
-                                <Button @click="changeTheme('dark')" size="sm" type="primary">黑</Button>
-                            </div>
-                        </template>
-                    </Card>
-                    <Card class="card">
-                        <template v-slot:header>
-                            <div>圆角</div>
-                        </template>
-                        <template v-slot:body>
-                            <div class="card-body">
-                                <Button @click="changeRadius('small')" size="sm" type="outline"
-                                    style="border-radius: 4px;">小</Button>
-                                <Button @click="changeRadius('medium')" size="sm" type="outline"
-                                    style="border-radius: 8px;">中</Button>
-                                <Button @click="changeRadius('large')" size="sm" type="outline"
-                                    style="border-radius: 12px;">大</Button>
-                            </div>
-                        </template>
-                    </Card>
-                    <Card class="card">
-                        <template v-slot:header>
-                            <div>布局</div>
-                        </template>
-                        <template v-slot:body>
-                            <div class="card-body">
-                                <Button :type="layout === '3' ? 'primary' : 'outline'" size="sm"
-                                    @click="layout = '3'">三栏</Button>
-                                <Button :type="layout === '2' ? 'primary' : 'outline'" size="sm"
-                                    @click="layout = '2'">两栏</Button>
-                            </div>
+                            <div class="card-body"></div>
                         </template>
                     </Card>
                     <Card v-if="showRightInLeft">
@@ -71,22 +37,11 @@
                     </Card>
                 </div>
                 <div class="main">
-                    <Card>
-                        <template #header>路由内容区</template>
-                        <template #body>
-                            <div class="card-body">
-                                <p>路由内容。</p>
-                                <p>路由内容。</p>
-                                <p>路由内容。</p>
-                                <p>路由内容。</p>
-                                <p>路由内容。</p>
-                                <p>路由内容。</p>
-                                <p>路由内容。</p>
-                                <p>路由内容。</p>
-                                <p>路由内容。</p>
-                            </div>
-                        </template>
-                    </Card>
+                    <router-view v-slot="{ Component }">
+                        <transition name="fade" mode="out-in">
+                            <component :is="Component" />
+                        </transition>
+                    </router-view>
                     <Footer />
                 </div>
                 <div class="right" v-if="showRight">
@@ -116,24 +71,16 @@
 import Navigation from '@/components/Navigation.vue';
 import Card from '@/components/Card.vue';
 import { useThemeStore } from '@/stores/theme';
-import Button from '@/components/Button.vue';
-import { ref, onMounted, onUnmounted, computed, onBeforeUnmount, watch } from 'vue';
-import { useRadiusStore } from '@/stores/radius';
+import { ref, onMounted, computed, onBeforeUnmount } from 'vue';
 import Footer from '@/components/Footer.vue';
+import { useLayoutStore } from '@/stores/layout';
 
 const themeStore = useThemeStore();
-const radiusStore = useRadiusStore();
-const changeTheme = (theme: string) => {
-    console.log('changeTheme called:', theme);
-    themeStore.setTheme(theme);
-}
-const changeRadius = (radius: string) => {
-    radiusStore.setRadius(radius);
-}
+const layoutStore = useLayoutStore();
 
 const theme = computed(() => themeStore.theme);
+const layout = computed(() => layoutStore.layout);
 
-const layout = ref('3');
 const windowWidth = ref(window.innerWidth);
 
 
@@ -337,6 +284,22 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* router-view 过渡动画 */
+.fade-enter-active,
+.fade-leave-active {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-enter-from {
+    opacity: 0;
+    transform: translateY(10px);
+}
+
+.fade-leave-to {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
 .container {
     display: block;
     position: relative;
