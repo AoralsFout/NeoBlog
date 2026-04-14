@@ -5,9 +5,9 @@
                 <img :src="URL + '/images/logo.png'" alt="" srcset="">
             </div>
             <div class="selections">
-                <router-link to="/" active-class="active">首页</router-link>
-                <router-link to="/articles" active-class="active">文章列表</router-link>
-                <router-link to="/settings" active-class="active">设置</router-link>
+                <router-link to="/"><span>首页</span></router-link>
+                <router-link to="/articles" active-class="active"><span>文章列表</span></router-link>
+                <router-link to="/settings" active-class="active"><span>设置</span></router-link>
             </div>
             <div class="actions">
                 <div class="button"></div>
@@ -46,10 +46,11 @@ const URL = import.meta.env.VITE_API_BASE_URL;
     z-index: 1;
     transform: scale(1);
 
-    transition: background-color 0.2s ease-in-out, border-radius 0.2s ease-in-out, transform 0.2s ease-in-out;
+    transition: background-color 0.2s ease-in-out, border-radius 0.2s ease-in-out, padding 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 
     &:hover {
-        transform: scale(1.01);
+        padding: 1rem 2rem;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
     }
 
     >.logo {
@@ -68,11 +69,49 @@ const URL = import.meta.env.VITE_API_BASE_URL;
         gap: 1rem;
 
         a {
+            padding: 0.5rem;
+            position: relative;
             color: var(--text-primary);
             text-decoration: none;
             font-weight: bold;
             font-size: 1rem;
             user-select: none;
+            transition: color 0.2s ease-in-out;
+            z-index: 1;
+
+            span {
+                position: relative;
+                z-index: 1;
+            }
+
+            &:hover::after {
+                height: 30%;
+            }
+
+            &:hover span,
+            &.active span {
+                color: var(--text-on-color);
+                text-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            }
+
+            &:hover::after,
+            &.active::after {
+                width: 100%;
+            }
+
+            &::after {
+                content: '';
+                width: 0%;
+                height: 20%;
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background-color: var(--color-primary);
+                z-index: 0;
+
+                transition: background-color 0.2s ease-in-out, width 0.2s ease-in-out, height 0.2s ease-in-out;
+            }
         }
     }
 
