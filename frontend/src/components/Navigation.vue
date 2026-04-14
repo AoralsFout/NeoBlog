@@ -19,39 +19,59 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue';
+
 const URL = import.meta.env.VITE_API_BASE_URL;
+
+const scrollY = ref(0);
+const scrollRatio = ref(0);
+
+const updateScroll = () => {
+    scrollY.value = window.scrollY;
+    const windowHeight = window.innerHeight;
+    // 滚动60vh时达到最终样式
+    const threshold = 0.6 * windowHeight;
+    scrollRatio.value = Math.min(scrollY.value / threshold, 1);
+    // 设置CSS全局变量
+    document.documentElement.style.setProperty('--scroll-ratio', scrollRatio.value.toFixed(2));
+};
+
+onMounted(() => {
+    window.addEventListener('scroll', updateScroll);
+    updateScroll(); // 初始化
+});
+
+onUnmounted(() => {
+    window.removeEventListener('scroll', updateScroll);
+});
 </script>
 
 <style scoped>
 .NavigationContainer {
-    position: absolute;
-    width: calc(100vw - 20px);
-    padding: 10px;
+    position: fixed;
+    width: calc(100vw - 20px * (1 - var(--scroll-ratio, 0)));
+    padding: calc(10px * (1 - var(--scroll-ratio, 0)));
+    transition: width 0.2s ease-in-out, padding 0.2s ease-in-out;
     z-index: 9999;
 }
 
 .navigation-bar {
-    width: 90%;
-    max-width: 1200px;
+    width: calc(90% + 10% * var(--scroll-ratio, 0) - 2rem);
+    max-width: calc(1200px * (1 - var(--scroll-ratio, 0)) + 100% * var(--scroll-ratio, 0));
+    background-color: color-mix(in srgb, var(--bg-primary) calc(20% + 80% * var(--scroll-ratio, 0)), transparent);
+    backdrop-filter: blur(10px);
+    border-radius: calc(var(--radius-large) * (1 - var(--scroll-ratio, 0)));
     display: flex;
     position: relative;
     justify-content: space-between;
     align-items: center;
     margin: 0 auto;
     padding: 1rem;
-    background-color: color-mix(in srgb, var(--bg-primary) 20%, transparent);
-    backdrop-filter: blur(10px);
-    border-radius: var(--radius-large);
     box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
     z-index: 1;
     transform: scale(1);
 
-    transition: background-color 0.2s ease-in-out, border-radius 0.2s ease-in-out, padding 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-
-    &:hover {
-        padding: 1rem 2rem;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-    }
+    transition: background-color 0.2s ease-in-out, border-radius 0.2s ease-in-out, padding 0.2s ease-in-out, width 0.2s ease-in-out, max-width 0.2s ease-in-out;
 
     >.logo {
         width: 150px;
@@ -91,7 +111,7 @@ const URL = import.meta.env.VITE_API_BASE_URL;
             &:hover span,
             &.active span {
                 color: var(--text-on-color);
-                text-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
             }
 
             &:hover::after,
