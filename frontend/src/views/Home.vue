@@ -74,6 +74,8 @@ import { useThemeStore } from '@/stores/theme';
 import { ref, onMounted, computed, onBeforeUnmount } from 'vue';
 import Footer from '@/components/Footer.vue';
 import { useLayoutStore } from '@/stores/layout';
+import { useBackgroundAnimation } from '@/composables/useBackgroundAnimation';
+import { useWaveAnimation } from '@/composables/useWaveAnimation';
 
 const themeStore = useThemeStore();
 const layoutStore = useLayoutStore();
@@ -103,183 +105,20 @@ const showRight = computed(() => effectiveLayout.value === '3' || windowWidth.va
 // 是否在左侧显示右侧内容（两栏且非手机屏幕）
 const showRightInLeft = computed(() => effectiveLayout.value === '2' && windowWidth.value > 768);
 
+// 使用组合式函数实现背景动画和波浪动画
 const wallpapers = ref<HTMLDivElement | null>(null)
 const waveCanvas = ref<HTMLCanvasElement | null>(null)
-// 壁纸切换器
-const images = ref<HTMLImageElement[]>([])
-const activeIndex = ref(0)
-const nextIndex = ref(1)
-let intervalId: number | undefined = undefined;
-
-const initWallpaperSwitcher = () => {
-    if (wallpapers.value) {
-        images.value = Array.from(wallpapers.value.querySelectorAll('img'))
-    }
-
-    // 设置初始图片
-    if (images.value[activeIndex.value]) {
-        images.value[activeIndex.value]!.classList.add('active')
-    }
-
-    // 每15秒切换一次（可根据需要调整）
-    intervalId = setInterval(switchWallpaper, 15000);
-}
-
-const switchWallpaper = () => {
-    // 预加载下一张图片
-    preloadNextImage().then(() => {
-        // 淡出当前图片
-        if (images.value[activeIndex.value]) {
-            images.value[activeIndex.value]!.classList.remove('active')
-        }
-
-        // 淡入新图片
-        // setTimeout(() => {
-        if (images.value[nextIndex.value]) {
-            images.value[nextIndex.value]!.classList.add('active')
-        }
-
-        // 更新索引
-        [activeIndex.value, nextIndex.value] = [nextIndex.value, activeIndex.value]
-        // }, 100)
-    })
-}
-
-const preloadNextImage = () => {
-    return new Promise<void>((resolve) => {
-        // 生成带时间戳的新URL避免缓存
-        const newUrl = `https://t.alcy.cc/pc/?t=${Date.now()}`
-        const img = new Image()
-
-        img.onload = () => {
-            if (images.value[nextIndex.value]) {
-                images.value[nextIndex.value]!.src = newUrl
-            }
-            resolve()
-        }
-
-        img.onerror = () => {
-            // 失败时重试
-            setTimeout(() => preloadNextImage(), 1000)
-        }
-
-        img.src = newUrl
-    })
-}
-
-// 波浪动画
-let waveCtx: CanvasRenderingContext2D | null = null
-let waveTime = 0
-let secondaryWaveTime = 0
-const waveAmplitude = 20
-const waveFrequency = 0.005
-const waveSpeed = 0.05
-const secondaryWaveAmplitude = 40 // 后方波浪振幅
-const secondaryWaveFrequency = 0.005 // 后方波浪频率
-const secondaryWaveSpeed = 0.03 // 后方波浪速度
-const secondaryWavePhase = Math.PI / 2 // 初始相位差90度
-
-const initWaveCanvas = () => {
-    if (!waveCanvas.value) return
-    waveCtx = waveCanvas.value.getContext('2d')
-    resizeWaveCanvas()
-    window.addEventListener('resize', resizeWaveCanvas)
-}
-
-const resizeWaveCanvas = () => {
-    if (!waveCanvas.value || !waveCtx) return
-    const dpr = window.devicePixelRatio || 1
-    const rect = waveCanvas.value.getBoundingClientRect()
-    waveCanvas.value.width = rect.width * dpr
-    waveCanvas.value.height = rect.height * dpr
-    waveCtx.setTransform(1, 0, 0, 1, 0, 0)
-    waveCtx.scale(dpr, dpr)
-}
-
-const drawWaves = () => {
-    if (!waveCanvas.value || !waveCtx) return
-    const width = waveCanvas.value.clientWidth
-    const height = waveCanvas.value.clientHeight
-
-    // 清除画布
-    waveCtx.clearRect(0, 0, width, height)
-
-    // 获取CSS颜色变量
-    const rootStyle = getComputedStyle(document.documentElement)
-    const bgSecondary = rootStyle.getPropertyValue('--bg-secondary').trim()
-    const colorPrimary = rootStyle.getPropertyValue('--color-primary').trim()
-
-    // 绘制后方波浪（--color-primary）
-    waveCtx.beginPath()
-    waveCtx.moveTo(0, height / 2)
-    for (let x = 0; x <= width; x += 1) {
-        const y = height / 2 + Math.sin(x * secondaryWaveFrequency + secondaryWaveTime + secondaryWavePhase) * secondaryWaveAmplitude
-        waveCtx.lineTo(x, y)
-    }
-    waveCtx.lineTo(width, height)
-    waveCtx.lineTo(0, height)
-    waveCtx.closePath()
-    waveCtx.fillStyle = colorPrimary || '#333333'
-    waveCtx.globalAlpha = 0.8
-    waveCtx.fill()
-    waveCtx.globalAlpha = 1
-
-    // 绘制主波浪（--bg-secondary）
-    waveCtx.beginPath()
-    waveCtx.moveTo(0, height / 2)
-    for (let x = 0; x <= width; x += 1) {
-        const y = height / 2 + Math.sin(x * waveFrequency + waveTime) * waveAmplitude
-        waveCtx.lineTo(x, y)
-    }
-    waveCtx.lineTo(width, height)
-    waveCtx.lineTo(0, height)
-    waveCtx.closePath()
-    waveCtx.fillStyle = bgSecondary || '#f8f9fa'
-    waveCtx.fill()
-
-    waveTime += waveSpeed
-    secondaryWaveTime += secondaryWaveSpeed
-}
-
-// 镜头动画
-let angle = 0;
-let animationFrameId: number | undefined = undefined;
-const animation = () => {
-    //镜头摇晃动画
-    let speed = 1
-    //speed扰动
-    speed = speed + Math.cos(angle) * Math.sin(angle)
-    const radius = 10
-    const position: [number, number] = [radius * Math.cos(angle) * speed, radius * Math.sin(angle) * speed]
-    angle += 0.01
-    // 壁纸动画
-    if (wallpapers.value) {
-        wallpapers.value.style.transform = `
-            translateX(${position[0] * 1}px)
-            translateY(${position[1] * 1}px)
-        `
-    }
-
-    // 绘制波浪
-    drawWaves()
-
-    animationFrameId = requestAnimationFrame(animation)
-}
+const { start: startBackgroundAnimation, stop: stopBackgroundAnimation } = useBackgroundAnimation(wallpapers)
+const { start: startWaveAnimation, stop: stopWaveAnimation } = useWaveAnimation(waveCanvas)
 
 onMounted(() => {
-    animation()
-    initWallpaperSwitcher()
-    initWaveCanvas()
+    startBackgroundAnimation()
+    startWaveAnimation()
 })
 
 onBeforeUnmount(() => {
-    if (intervalId) {
-        clearInterval(intervalId)
-    }
-    if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId)
-    }
-    window.removeEventListener('resize', resizeWaveCanvas)
+    stopBackgroundAnimation()
+    stopWaveAnimation()
 })
 </script>
 
