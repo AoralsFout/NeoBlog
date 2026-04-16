@@ -3,6 +3,7 @@
 // TS 识别环境变量
 interface ImportMetaEnv {
   readonly VITE_API_BASE_URL: string;
+  readonly VITE_FRONTEND_BASE_URL: string;
 }
 
 interface ImportMeta {

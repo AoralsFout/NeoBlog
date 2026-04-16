@@ -2,7 +2,7 @@
     <div class="NavigationContainer">
         <div class="navigation-bar">
             <div class="logo">
-                <img src="http://localhost:3000/images/logo.png" alt="" srcset="">
+                <img :src="`${URL}/images/logo.png`" alt="" srcset="">
             </div>
             <div class="selections">
                 <router-link to="/"><span>首页</span></router-link>
@@ -72,6 +72,8 @@ import { ref, onMounted, onUnmounted, onBeforeMount, Transition } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/user';
 import Button from './Button.vue';
+
+const URL = import.meta.env.VITE_FRONTEND_BASE_URL;
 
 const router = useRouter();
 const userStore = useUserStore();
