@@ -7,8 +7,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# 生产环境变量
-.env.production
+.env*
 
 node_modules
 .DS_Store
