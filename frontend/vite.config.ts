@@ -36,11 +36,17 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       // 将 /api 请求代理到后端
+      // 将 /images 请求代理到静态资源 /images目录
       proxy: {
         '/api': {
-          target: env.VITE_API_BASE_URL,
+          target: 'http://localhost:3001',
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, '/v1'),
+          rewrite: (path) => path.replace(/^\/api/, '/api')
+        },
+        '/images': {
+          target: 'http://localhost:3001',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/images/, '/images')
         }
       }
     }

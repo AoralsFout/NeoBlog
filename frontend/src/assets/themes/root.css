@@ -6,5 +6,8 @@
     --text-secondary: #595959;
     --text-tertiary: #8c8c8c;
 
+    --border-color: #e0e0e0;
     --radius-round: 50%;
+
+    --text-on-color: #ffffff;
 }

@@ -19,6 +19,21 @@ const router = createRouter({
           name: '设置',
           component: () => import('@/views/Settings.vue'),
         },
+        {
+          path: '/user',
+          name: '个人中心',
+          component: () => import('@/views/User.vue'),
+        },
+        {
+          path: '/login',
+          name: '登录',
+          component: () => import('@/views/Login.vue'),
+        },
+        {
+          path: '/auth/callback',
+          name: 'OAuth回调',
+          component: () => import('@/views/OAuthCallback.vue'),
+        },
       ],
     },
     {

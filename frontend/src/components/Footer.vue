@@ -35,10 +35,11 @@ const formattedDate = new Date(gitDate).toLocaleString('zh-CN', {
 
 <style scoped>
 .FooterContainer {
+    margin-top: 2rem;
     padding: 1.5rem 1rem;
     background-color: transparent;
     color: var(--text-secondary);
-    border-top: 1px solid var(--color-tertiary, #e0e0e0);
+    border-top: 1px dashed var(--color-primary);
     font-size: 0.8125rem;
     line-height: 1.5;
 }
