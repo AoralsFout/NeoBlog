@@ -1,7 +1,11 @@
 import dotenv from 'dotenv';
 
-// 加载环境变量
-dotenv.config();
+// 根据NODE_ENV加载环境变量
+const nodeEnv = process.env.NODE_ENV || 'development';
+const envFile = `.env.${nodeEnv}`;
+
+// 加载特定环境文件
+dotenv.config({ path: envFile });
 
 const requiredEnvVars = [
   'DATABASE_URL',
