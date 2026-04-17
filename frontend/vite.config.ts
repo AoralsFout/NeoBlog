@@ -19,7 +19,12 @@ try {
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
+  // 加载环境变量
   const env = loadEnv(mode, process.cwd())
+
+  // 获取后端 API 基础地址，如果未配置则使用默认值
+  const apiBaseUrl = env.VITE_API_BASE_URL || 'http://localhost:3001'
+
   return {
     define: {
       __GIT_HASH__: JSON.stringify(gitHash),
@@ -39,17 +44,17 @@ export default defineConfig(({ mode }) => {
       // 将 /images 请求代理到静态资源 /images目录
       proxy: {
         '/api': {
-          target: 'http://localhost:3001',
+          target: apiBaseUrl,
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, '/api')
         },
         '/images': {
-          target: 'http://localhost:3001',
+          target: apiBaseUrl,
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/images/, '/images')
         },
         '/uploads': {
-          target: 'http://localhost:3001',
+          target: apiBaseUrl,
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/uploads/, '/uploads')
         }
