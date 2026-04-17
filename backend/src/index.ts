@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
 import { env } from '../config/env';
 import { checkDatabaseConnection } from '../config/database';
 import logger from '../utils/logger';
@@ -62,7 +63,8 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // 静态文件服务
-app.use(express.static('public'));
+const publicDir = path.join(__dirname, '..', 'public');
+app.use(express.static(publicDir)); 
 
 // 日志中间件
 app.use((req: Request, res: Response, next: NextFunction) => {

@@ -2,8 +2,6 @@
  * API工具函数
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-
 /**
  * 获取认证令牌
  */
@@ -62,7 +60,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
  * GET请求
  */
 export async function get<T>(endpoint: string): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const response = await fetch(`${endpoint}`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -74,7 +72,7 @@ export async function get<T>(endpoint: string): Promise<T> {
  * POST请求
  */
 export async function post<T>(endpoint: string, data?: any): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const response = await fetch(`${endpoint}`, {
     method: 'POST',
     headers: getHeaders(),
     body: data ? JSON.stringify(data) : undefined,
@@ -87,7 +85,7 @@ export async function post<T>(endpoint: string, data?: any): Promise<T> {
  * PATCH请求
  */
 export async function patch<T>(endpoint: string, data: any): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const response = await fetch(`${endpoint}`, {
     method: 'PATCH',
     headers: getHeaders(),
     body: JSON.stringify(data),
@@ -111,7 +109,7 @@ export async function del<T>(endpoint: string, data?: any): Promise<T> {
     options.body = JSON.stringify(data);
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+  const response = await fetch(`${endpoint}`, options);
 
   return handleResponse<T>(response);
 }
@@ -121,7 +119,7 @@ export async function del<T>(endpoint: string, data?: any): Promise<T> {
  */
 export async function upload<T>(endpoint: string, formData: FormData): Promise<T> {
   // 对于文件上传，不设置Content-Type，让浏览器自动设置
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const response = await fetch(`${endpoint}`, {
     method: 'POST',
     headers: getHeaders(''), // 传递空字符串表示不设置Content-Type
     body: formData,
@@ -148,7 +146,7 @@ export const authApi = {
    * 跳转到OAuth登录
    */
   redirectToOAuth: () => {
-    window.location.href = `${API_BASE_URL}/api/auth/natayark`;
+    window.location.href = `/api/auth/natayark`;
   },
 };
 
