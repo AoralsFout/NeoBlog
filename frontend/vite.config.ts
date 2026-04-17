@@ -47,6 +47,11 @@ export default defineConfig(({ mode }) => {
           target: 'http://localhost:3001',
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/images/, '/images')
+        },
+        '/uploads': {
+          target: 'http://localhost:3001',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/uploads/, '/uploads')
         }
       }
     }

@@ -27,6 +27,12 @@ import {
   listRoutes,
 } from '../controllers/health.controller';
 
+import {
+  uploadFile,
+  uploadAvatar,
+  deleteUploadedFile,
+} from '../controllers/upload.controller';
+
 // 创建Express应用
 const app = express();
 const port = env.port;
@@ -84,6 +90,11 @@ app.get('/api/users', getUsers);
 app.get('/api/users/:id', getUserById);
 app.patch('/api/users/:id', updateUser);
 app.get('/api/users/search', searchUsers);
+
+// 文件上传路由
+app.post('/api/upload', uploadFile);
+app.post('/api/upload/avatar', uploadAvatar);
+app.delete('/api/upload', deleteUploadedFile);
 
 // 根路由
 app.get('/', (req: Request, res: Response) => {

@@ -30,9 +30,16 @@
               <div v-else class="avatar-placeholder">
                 {{ userStore.currentUser?.username?.charAt(0).toUpperCase() || 'U' }}
               </div>
-              <Button class="change-avatar-btn" @click="changeAvatar">
-                更换头像
+              <Button class="change-avatar-btn" @click="changeAvatar" :disabled="isUploadingAvatar || userStore.isLoading">
+                {{ isUploadingAvatar ? '上传中...' : '上传头像' }}
               </Button>
+              <input
+                type="file"
+                ref="fileInput"
+                style="display: none"
+                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                @change="handleFileSelect"
+              />
             </div>
 
             <div class="user-basic-info">
@@ -168,6 +175,7 @@ const router = useRouter();
 // 编辑状态
 const isEditing = ref(false);
 const isSaving = ref(false);
+const isUploadingAvatar = ref(false);
 
 // 编辑表单数据
 const editForm = reactive({
@@ -213,10 +221,57 @@ const saveChanges = async () => {
   }
 };
 
+// 文件输入引用
+const fileInput = ref<HTMLInputElement | null>(null);
+
 // 更换头像
 const changeAvatar = () => {
-  // 这里可以添加上传头像的逻辑
-  alert('头像上传功能暂未实现');
+  if (fileInput.value) {
+    fileInput.value.click();
+  }
+};
+
+// 处理文件选择
+const handleFileSelect = async (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  if (!input.files || input.files.length === 0) {
+    return;
+  }
+
+  const file = input.files[0]!;
+
+  // 验证文件类型
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+  if (!allowedTypes.includes(file.type)) {
+    alert('请选择图片文件（JPEG、PNG、GIF 或 WebP 格式）');
+    return;
+  }
+
+  // 验证文件大小（5MB）
+  const maxSize = 5 * 1024 * 1024; // 5MB
+  if (file.size > maxSize) {
+    alert('文件大小不能超过5MB');
+    return;
+  }
+
+  try {
+    isUploadingAvatar.value = true;
+
+    // 调用用户存储的上传头像方法
+    await userStore.uploadAvatar(file);
+
+    // 重置文件输入，以便可以选择同一个文件再次上传
+    input.value = '';
+
+    // 显示成功消息
+    // 这里可以使用更优雅的通知方式，暂时使用alert
+    alert('头像上传成功！');
+  } catch (error) {
+    console.error('头像上传失败:', error);
+    alert('头像上传失败，请重试');
+  } finally {
+    isUploadingAvatar.value = false;
+  }
 };
 
 // 用户登出

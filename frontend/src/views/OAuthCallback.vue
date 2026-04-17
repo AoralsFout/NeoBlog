@@ -66,9 +66,9 @@ onMounted(async () => {
 
     if (success) {
       isSuccess.value = true;
-      // 2秒后跳转到用户页面
+      // 2秒后跳转到主页面
       setTimeout(() => {
-        router.push('/user');
+        router.push('/');
       }, 2000);
     } else {
       throw new Error('OAuth回调处理失败');

@@ -29,9 +29,12 @@ export function removeToken(): void {
  * 获取请求头
  */
 function getHeaders(contentType: string = 'application/json'): HeadersInit {
-  const headers: HeadersInit = {
-    'Content-Type': contentType,
-  };
+  const headers: HeadersInit = {};
+
+  // 只有在contentType不为空时才添加Content-Type
+  if (contentType) {
+    headers['Content-Type'] = contentType;
+  }
 
   const token = getToken();
   if (token) {
@@ -96,10 +99,32 @@ export async function patch<T>(endpoint: string, data: any): Promise<T> {
 /**
  * DELETE请求
  */
-export async function del<T>(endpoint: string): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+export async function del<T>(endpoint: string, data?: any): Promise<T> {
+  const options: RequestInit = {
     method: 'DELETE',
     headers: getHeaders(),
+  };
+
+  // 如果有数据，添加到请求体
+  if (data) {
+    options.headers = getHeaders('application/json');
+    options.body = JSON.stringify(data);
+  }
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+
+  return handleResponse<T>(response);
+}
+
+/**
+ * 文件上传请求
+ */
+export async function upload<T>(endpoint: string, formData: FormData): Promise<T> {
+  // 对于文件上传，不设置Content-Type，让浏览器自动设置
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method: 'POST',
+    headers: getHeaders(''), // 传递空字符串表示不设置Content-Type
+    body: formData,
   });
 
   return handleResponse<T>(response);
@@ -150,4 +175,24 @@ export const userApi = {
    * 搜索用户
    */
   searchUsers: (query: string) => get<{ success: boolean; data: any[] }>(`/api/users/search?q=${encodeURIComponent(query)}`),
+};
+
+/**
+ * 文件上传API
+ */
+export const uploadApi = {
+  /**
+   * 上传文件
+   */
+  uploadFile: (formData: FormData) => upload<{ success: boolean; data: any }>('/api/upload', formData),
+
+  /**
+   * 上传头像
+   */
+  uploadAvatar: (formData: FormData) => upload<{ success: boolean; data: any }>('/api/upload/avatar', formData),
+
+  /**
+   * 删除上传的文件
+   */
+  deleteFile: (filepath: string) => del<{ success: boolean; message: string }>('/api/upload', { filepath }),
 };

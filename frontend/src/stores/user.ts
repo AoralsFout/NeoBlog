@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import type { User } from "@/types/user";
-import { authApi, setToken, removeToken } from "@/utils/api";
+import { authApi, userApi, uploadApi, setToken, removeToken } from "@/utils/api";
 
 export const useUserStore = defineStore("user", () => {
   // 当前用户信息
@@ -124,17 +124,52 @@ export const useUserStore = defineStore("user", () => {
         throw new Error("用户未登录");
       }
 
-      // 这里应该调用更新用户的API
-      // 暂时只更新本地状态
-      currentUser.value = {
-        ...currentUser.value,
-        ...userData,
-        updated_at: new Date().toISOString(),
-      };
+      // 调用更新用户API
+      const response = await userApi.updateUser(currentUser.value.id, userData);
 
-      return currentUser.value;
+      if (response.success && response.data) {
+        // 更新本地用户状态
+        currentUser.value = response.data;
+        return currentUser.value;
+      } else {
+        throw new Error("更新用户信息失败");
+      }
     } catch (err) {
       error.value = err instanceof Error ? err.message : "更新用户信息失败";
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  /**
+   * 上传用户头像
+   */
+  const uploadAvatar = async (file: File) => {
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      if (!currentUser.value) {
+        throw new Error("用户未登录");
+      }
+
+      // 创建FormData对象
+      const formData = new FormData();
+      formData.append('avatar', file);
+
+      // 调用上传头像API
+      const response = await uploadApi.uploadAvatar(formData);
+
+      if (response.success && response.data?.user) {
+        // 更新本地用户状态
+        currentUser.value = response.data.user;
+        return response.data;
+      } else {
+        throw new Error("头像上传失败");
+      }
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : "头像上传失败";
       throw err;
     } finally {
       isLoading.value = false;
@@ -165,6 +200,7 @@ export const useUserStore = defineStore("user", () => {
     handleOAuthCallback,
     logout,
     updateUserProfile,
+    uploadAvatar,
     clearError,
   };
 });
