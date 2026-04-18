@@ -142,11 +142,15 @@ onUnmounted(() => {
 <style scoped>
 .fade-enter-active,
 .fade-leave-active {
-    transition: opacity 0.2s ease-in-out;
+    transition: all 0.1s ease-in-out;
 }
 
-.fade-enter-from,
+.fade-enter-from{
+    transform: translateY(-10px);
+    opacity: 0;
+}
 .fade-leave-to {
+    transform: translateY(0px);
     opacity: 0;
 }
 
