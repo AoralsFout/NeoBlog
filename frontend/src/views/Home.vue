@@ -85,6 +85,16 @@
                                             </path>
                                         </svg>
                                         <div class="text">
+                                            <span>2168842137</span>
+                                        </div>
+                                    </a>
+                                    <a class="link unreachabel">
+                                        <svg viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+                                            <path
+                                                d="M824.8 613.2c-16-51.4-34.4-94.6-62.7-165.3C766.5 262.2 689.3 112 511.5 112 331.7 112 256.2 265.2 261 447.9c-28.4 70.8-46.7 113.7-62.7 165.3-34 109.5-23 154.8-14.6 155.8 18 2.2 70.1-82.4 70.1-82.4 0 49 25.2 112.9 79.8 159-26.4 8.1-85.7 29.9-71.6 53.8 11.4 19.3 196.2 12.3 249.5 6.3 53.3 6 238.1 13 249.5-6.3 14.1-23.8-45.3-45.7-71.6-53.8 54.6-46.2 79.8-110.1 79.8-159 0 0 52.1 84.6 70.1 82.4 8.5-1.1 19.5-46.4-14.5-155.8z">
+                                            </path>
+                                        </svg>
+                                        <div class="text">
                                             <span>3250658422</span>
                                         </div>
                                     </a>
@@ -147,6 +157,7 @@
                             </div>
                         </template>
                     </Card>
+                    <MusicBox></MusicBox>
                 </div>
             </div>
         </div>
@@ -156,9 +167,10 @@
 <script setup lang="ts">
 import Navigation from '@/components/Navigation.vue';
 import Card from '@/components/Card.vue';
+import Footer from '@/components/Footer.vue';
+import MusicBox from '@/components/MusicBox.vue';
 import { useThemeStore } from '@/stores/theme';
 import { ref, onMounted, computed, onBeforeUnmount } from 'vue';
-import Footer from '@/components/Footer.vue';
 import { useLayoutStore } from '@/stores/layout';
 import { useBackgroundAnimation } from '@/composables/useBackgroundAnimation';
 import { useWaveAnimation } from '@/composables/useWaveAnimation';
@@ -389,21 +401,21 @@ onBeforeUnmount(() => {
     grid-area: left;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 2rem;
 }
 
 .main {
     grid-area: main;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 2rem;
 }
 
 .right {
     grid-area: right;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 2rem;
 }
 
 .card {
@@ -411,7 +423,7 @@ onBeforeUnmount(() => {
 }
 
 .card-body {
-    padding: 10px;
+    padding: 1rem;
 }
 
 .about {
@@ -421,14 +433,15 @@ onBeforeUnmount(() => {
     align-items: center;
 
     >.avatar {
-        width: calc(100% - 2rem);
-        padding: 1rem;
+        width: 100%;
 
         >img {
             width: 100%;
             height: 100%;
             object-fit: cover;
             border-radius: var(--radius-large);
+
+            transition: border-radius 0.2s ease-in-out;
         }
     }
 
@@ -476,8 +489,8 @@ onBeforeUnmount(() => {
             }
 
             >svg {
-                width: 1.5rem;
-                height: 1.5rem;
+                width: 1rem;
+                height: 1rem;
                 fill: currentColor;
                 transition: color 0.2s ease-in-out;
                 -webkit-user-drag: none;
@@ -493,10 +506,9 @@ onBeforeUnmount(() => {
                 >span {
                     position: relative;
                     z-index: 1;
-                    font-size: 1rem;
-                    line-height: 1rem;
-                    height: 1rem;
-                    font-weight: bold;
+                    font-size: 0.8rem;
+                    line-height: 0.8rem;
+                    height: 0.8rem;
                     text-shadow: 0 0 10px rgba(0, 0, 0, 0.0);
 
                     transition: text-shadow 0.2s ease-in-out, color 0.2s ease-in-out;
