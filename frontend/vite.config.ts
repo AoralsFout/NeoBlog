@@ -57,6 +57,11 @@ export default defineConfig(({ mode }) => {
           target: apiBaseUrl,
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/uploads/, '/uploads')
+        },
+        '/musics': {
+          target: apiBaseUrl,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/musics/, '/musics')
         }
       }
     }

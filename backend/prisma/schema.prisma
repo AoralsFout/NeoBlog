@@ -32,3 +32,16 @@ enum Status {
   BANNED
   FROZEN
 }
+
+model Music {
+  id          Int      @id @default(autoincrement())
+  title       String
+  author      String
+  album       String
+  mainColor  String   @map("mainColor")
+  language    String
+  isTranslate Boolean @map("isTranslate")
+  format      String
+
+  @@map("musics")
+}

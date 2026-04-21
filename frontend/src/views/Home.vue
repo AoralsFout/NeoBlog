@@ -1,6 +1,7 @@
 <template>
     <div class="container">
         <Navigation />
+        <MusicPlayer />
         <div class="header">
             <div class="fliter" :class="{ 'dark': theme === 'dark' }"></div>
             <div class="wallpapers" ref="wallpapers">
@@ -157,7 +158,7 @@
                             </div>
                         </template>
                     </Card>
-                    <MusicBox></MusicBox>
+                    <!-- <MusicBox></MusicBox> -->
                 </div>
             </div>
         </div>
@@ -174,6 +175,7 @@ import { ref, onMounted, computed, onBeforeUnmount } from 'vue';
 import { useLayoutStore } from '@/stores/layout';
 import { useBackgroundAnimation } from '@/composables/useBackgroundAnimation';
 import { useWaveAnimation } from '@/composables/useWaveAnimation';
+import MusicPlayer from '@/components/MusicPlayer.vue';
 
 const themeStore = useThemeStore();
 const layoutStore = useLayoutStore();

@@ -34,6 +34,10 @@ import {
   deleteUploadedFile,
 } from '../controllers/upload.controller';
 
+import {
+  getMusicList,
+} from '../controllers/music.controller';
+
 // 创建Express应用
 const app = express();
 const port = env.port;
@@ -92,6 +96,9 @@ app.get('/api/users', getUsers);
 app.get('/api/users/:id', getUserById);
 app.patch('/api/users/:id', updateUser);
 app.get('/api/users/search', searchUsers);
+
+// 音乐路由
+app.get('/api/music/getMusicList', getMusicList);
 
 // 文件上传路由
 app.post('/api/upload', uploadFile);

@@ -5,7 +5,10 @@
       "Bash(npm install *)",
       "Bash(npx tsc *)",
       "Bash(npx ts-node *)",
-      "Bash(node -r ts-node/register src/index.ts)"
+      "Bash(node -r ts-node/register src/index.ts)",
+      "Bash(npx vue-tsc *)",
+      "Bash(npx prisma *)",
+      "Bash(dir *)"
     ]
   }
 }

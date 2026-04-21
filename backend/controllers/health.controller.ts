@@ -123,6 +123,11 @@ export const listRoutes = (req: Request, res: Response) => {
       path: '/api/users/search',
       description: '搜索用户（管理员）',
     },
+    {
+      method: 'GET',
+      path: '/api/music/getMusicList',
+      description: '获取音乐列表',
+    },
   ];
 
   res.json({
