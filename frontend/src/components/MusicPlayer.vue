@@ -4,7 +4,8 @@
             <div class="music-layout">
                 <div class="music-info">
                     <div class="music-tip" v-show="musicTip">{{ musicTip }}</div>
-                    <div class="music-cover">
+                    <div class="music-cover" ref="musicCover" @mouseenter="isCoverHover = true"
+                        @mouseover="isCoverHover = false">
                         <img :src="currentMusic.coverUrl" alt="" class="music-cover-img" ref="musicCoverImg">
                     </div>
                     <div class="music-list-box" ref="musicListBox">
@@ -52,7 +53,7 @@
                                     <g id="SVGRepo_iconCarrier">
                                         <path
                                             d="M7 5V19M17 7.329V16.671C17 17.7367 17 18.2695 16.7815 18.5432C16.5916 18.7812 16.3035 18.9197 15.9989 18.9194C15.6487 18.919 15.2327 18.5861 14.4005 17.9204L10.1235 14.4988C9.05578 13.6446 8.52194 13.2176 8.32866 12.7016C8.1592 12.2492 8.1592 11.7508 8.32866 11.2984C8.52194 10.7824 9.05578 10.3554 10.1235 9.50122L14.4005 6.07961C15.2327 5.41387 15.6487 5.081 15.9989 5.08063C16.3035 5.0803 16.5916 5.21876 16.7815 5.45677C17 5.73045 17 6.2633 17 7.329Z"
-                                            stroke="#000000" stroke-width="2" stroke-linecap="round"
+                                            stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                             stroke-linejoin="round"></path>
                                     </g>
                                 </svg>
@@ -67,7 +68,7 @@
                                     <g id="SVGRepo_iconCarrier">
                                         <path
                                             d="M16.6582 9.28638C18.098 10.1862 18.8178 10.6361 19.0647 11.2122C19.2803 11.7152 19.2803 12.2847 19.0647 12.7878C18.8178 13.3638 18.098 13.8137 16.6582 14.7136L9.896 18.94C8.29805 19.9387 7.49907 20.4381 6.83973 20.385C6.26501 20.3388 5.73818 20.0469 5.3944 19.584C5 19.053 5 18.1108 5 16.2264V7.77357C5 5.88919 5 4.94701 5.3944 4.41598C5.73818 3.9531 6.26501 3.66111 6.83973 3.6149C7.49907 3.5619 8.29805 4.06126 9.896 5.05998L16.6582 9.28638Z"
-                                            stroke="#000000" stroke-width="2" stroke-linejoin="round"></path>
+                                            stroke="currentColor" stroke-width="2" stroke-linejoin="round"></path>
                                     </g>
                                 </svg>
                             </div>
@@ -77,7 +78,7 @@
                                     <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
                                     <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
                                     <g id="SVGRepo_iconCarrier">
-                                        <path d="M8 5V19M16 5V19" stroke="#000000" stroke-width="2"
+                                        <path d="M8 5V19M16 5V19" stroke="currentColor" stroke-width="2"
                                             stroke-linecap="round" stroke-linejoin="round"></path>
                                     </g>
                                 </svg>
@@ -92,7 +93,7 @@
                                     <g id="SVGRepo_iconCarrier">
                                         <path
                                             d="M17 5V19M7 7.329V16.671C7 17.7367 7 18.2695 7.21846 18.5432C7.40845 18.7812 7.69654 18.9197 8.00108 18.9194C8.35125 18.919 8.76734 18.5861 9.59951 17.9204L13.8765 14.4988C14.9442 13.6446 15.4781 13.2176 15.6713 12.7016C15.8408 12.2492 15.8408 11.7508 15.6713 11.2984C15.4781 10.7824 14.9442 10.3554 13.8765 9.50122L9.59951 6.07961C8.76734 5.41387 8.35125 5.081 8.00108 5.08063C7.69654 5.0803 7.40845 5.21876 7.21846 5.45677C7 5.73045 7 6.2633 7 7.329Z"
-                                            stroke="#000000" stroke-width="2" stroke-linecap="round"
+                                            stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                             stroke-linejoin="round"></path>
                                     </g>
                                 </svg>
@@ -120,7 +121,7 @@
                                     <g id="SVGRepo_iconCarrier">
                                         <path
                                             d="M16.0004 9.00009C16.6281 9.83575 17 10.8745 17 12.0001C17 13.1257 16.6281 14.1644 16.0004 15.0001M18 5.29177C19.8412 6.93973 21 9.33459 21 12.0001C21 14.6656 19.8412 17.0604 18 18.7084M4.6 9.00009H5.5012C6.05213 9.00009 6.32759 9.00009 6.58285 8.93141C6.80903 8.87056 7.02275 8.77046 7.21429 8.63566C7.43047 8.48353 7.60681 8.27191 7.95951 7.84868L10.5854 4.69758C11.0211 4.17476 11.2389 3.91335 11.4292 3.88614C11.594 3.86258 11.7597 3.92258 11.8712 4.04617C12 4.18889 12 4.52917 12 5.20973V18.7904C12 19.471 12 19.8113 11.8712 19.954C11.7597 20.0776 11.594 20.1376 11.4292 20.114C11.239 20.0868 11.0211 19.8254 10.5854 19.3026L7.95951 16.1515C7.60681 15.7283 7.43047 15.5166 7.21429 15.3645C7.02275 15.2297 6.80903 15.1296 6.58285 15.0688C6.32759 15.0001 6.05213 15.0001 5.5012 15.0001H4.6C4.03995 15.0001 3.75992 15.0001 3.54601 14.8911C3.35785 14.7952 3.20487 14.6422 3.10899 14.4541C3 14.2402 3 13.9601 3 13.4001V10.6001C3 10.04 3 9.76001 3.10899 9.54609C3.20487 9.35793 3.35785 9.20495 3.54601 9.10908C3.75992 9.00009 4.03995 9.00009 4.6 9.00009Z"
-                                            stroke="#000000" stroke-width="2" stroke-linecap="round"
+                                            stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                             stroke-linejoin="round"></path>
                                     </g>
                                 </svg>
@@ -139,7 +140,7 @@
                                     <g id="SVGRepo_iconCarrier">
                                         <path
                                             d="M18 4L21 7M21 7L18 10M21 7H7C4.79086 7 3 8.79086 3 11M6 20L3 17M3 17L6 14M3 17H17C19.2091 17 21 15.2091 21 13"
-                                            stroke="#000000" stroke-width="2" stroke-linecap="round"
+                                            stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                             stroke-linejoin="round"></path>
                                     </g>
                                 </svg>
@@ -152,7 +153,7 @@
                                     <g id="SVGRepo_iconCarrier">
                                         <path
                                             d="M14 7H15.9992C19.3129 7 21.9992 9.68629 21.9992 13C21.9992 16.3137 19.3129 19 15.9992 19H8C4.68629 19 2 16.3137 2 13C2 9.68629 4.68629 7 8 7H10M7 4L10 7M10 7L7 10"
-                                            stroke="#000000" stroke-width="2" stroke-linecap="round"
+                                            stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                             stroke-linejoin="round"></path>
                                     </g>
                                 </svg>
@@ -165,7 +166,7 @@
                                     <g id="SVGRepo_iconCarrier">
                                         <path
                                             d="M18 4L21 7M21 7L18 10M21 7H17C16.0707 7 15.606 7 15.2196 7.07686C13.6329 7.39249 12.3925 8.63288 12.0769 10.2196C12 10.606 12 11.0707 12 12C12 12.9293 12 13.394 11.9231 13.7804C11.6075 15.3671 10.3671 16.6075 8.78036 16.9231C8.39397 17 7.92931 17 7 17H3M18 20L21 17M21 17L18 14M21 17H17C16.0707 17 15.606 17 15.2196 16.9231C15.1457 16.9084 15.0724 16.8917 15 16.873M3 7H7C7.92931 7 8.39397 7 8.78036 7.07686C8.85435 7.09158 8.92758 7.1083 9 7.12698"
-                                            stroke="#000000" stroke-width="2" stroke-linecap="round"
+                                            stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                             stroke-linejoin="round"></path>
                                     </g>
                                 </svg>
@@ -178,11 +179,11 @@
                                     <g id="SVGRepo_iconCarrier">
                                         <path
                                             d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
-                                            stroke="#000000" stroke-width="2" stroke-linecap="round"
+                                            stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                             stroke-linejoin="round"></path>
                                         <path
                                             d="M9 10.6C9 10.0399 9 9.75992 9.10899 9.54601C9.20487 9.35785 9.35785 9.20487 9.54601 9.10899C9.75992 9 10.0399 9 10.6 9H13.4C13.9601 9 14.2401 9 14.454 9.10899C14.6422 9.20487 14.7951 9.35785 14.891 9.54601C15 9.75992 15 10.0399 15 10.6V13.4C15 13.9601 15 14.2401 14.891 14.454C14.7951 14.6422 14.6422 14.7951 14.454 14.891C14.2401 15 13.9601 15 13.4 15H10.6C10.0399 15 9.75992 15 9.54601 14.891C9.35785 14.7951 9.20487 14.6422 9.10899 14.454C9 14.2401 9 13.9601 9 13.4V10.6Z"
-                                            stroke="#000000" stroke-width="2" stroke-linecap="round"
+                                            stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                             stroke-linejoin="round"></path>
                                     </g>
                                 </svg>
@@ -280,7 +281,7 @@
                                     <g id="SVGRepo_iconCarrier">
                                         <path
                                             d="M8 6L21 6.00078M8 12L21 12.0008M8 18L21 18.0007M3 6.5H4V5.5H3V6.5ZM3 12.5H4V11.5H3V12.5ZM3 18.5H4V17.5H3V18.5Z"
-                                            stroke="#000000" stroke-width="2" stroke-linecap="round"
+                                            stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                             stroke-linejoin="round"></path>
                                     </g>
                                 </svg>
@@ -421,7 +422,7 @@ const loadMusicList = async () => {
             item.coverUrl = '/musics/cover/' + item.id + '.jpg'
         })
 
-        switchMusic(0); // 切换到第一首音乐
+        switchMusic(Math.floor(Math.random() * musicList.value.length)); // 切换到随机音乐
     } catch (error) {
         console.error('获取音乐列表失败:', error)
     }
@@ -905,6 +906,46 @@ const applyTogglePlayModeMenuAnimation = () => {
     }
 }
 
+/**
+ * 音频特效相关
+*/
+const musicCover = ref<HTMLElement | null>(null)
+const isCoverHover = ref(false);
+const audioCtx = new AudioContext();
+const analyser = audioCtx.createAnalyser();
+let source: MediaElementAudioSourceNode | null = null;
+analyser.connect(audioCtx.destination);
+analyser.fftSize = 2048;
+
+const AudioAnimation = () => {
+    // 获取频率数据
+    const bufferLength = analyser.frequencyBinCount;
+    const freData = new Uint8Array(bufferLength);
+    analyser.getByteFrequencyData(freData);
+
+    // 振幅分析
+    // 加权平均，低频权重更高
+    let weightedSum = 0;
+    let weightSum = 0;
+    for (let i = 0; i < freData.length; i++) {
+        const weight = 1 / (i + 1);
+        weightedSum += freData[i]! * weight;
+        weightSum += weight;
+    }
+
+    const amplitude = weightedSum / weightSum;
+
+    // 将振幅绑定到唱片缩放属性
+
+    // 将振幅映射到缩放值
+    const scale = ((amplitude / 255) - 0.7) / 2.5 + 1
+    if (musicCover.value) {
+        musicCover.value.style.transform = `scale(${scale})`;
+    }
+
+    requestAnimationFrame(AudioAnimation);
+}
+
 // 在组件挂载时添加音频事件监听
 onMounted(() => {
     // 初始化播放列表
@@ -914,6 +955,12 @@ onMounted(() => {
         audio.value.addEventListener('timeupdate', handleTimeUpdate)
         audio.value.addEventListener('loadedmetadata', handleLoadedMetadata)
         audio.value.addEventListener('ended', handleAudioEnded)
+    }
+    // 初始化音频分析器
+    if (audio.value) {
+        source = audioCtx.createMediaElementSource(audio.value);
+        source.connect(analyser);
+        AudioAnimation();
     }
     // 添加歌词容器滚动事件监听
     nextTick(() => {
@@ -970,8 +1017,10 @@ onUnmounted(() => {
     position: relative;
     overflow: hidden;
     /* box-shadow: 0 0 10px rgba(0, 0, 0, 0.5); */
-    border: 1px solid #ccc;
-    border-radius: 0 0 0 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 0 0 0 var(--radius-medium);
+
+    transition: border-radius 0.2s ease-in-out;
 }
 
 .music-box-bg {
@@ -981,8 +1030,10 @@ onUnmounted(() => {
     top: 50%;
     transform: translate(-40px, -50%);
     filter: blur(10px);
-    border-radius: 0 0 0 10px;
+    border-radius: 0 0 0 var(--radius-medium);
     user-select: none;
+
+    transition: border-radius 0.2s ease-in-out;
 }
 
 .music-box-button {
@@ -992,9 +1043,11 @@ onUnmounted(() => {
     width: 40px;
     height: 70px;
     overflow: hidden;
-    border-radius: 10px 0px 0px 10px;
-    border: 1px solid #ccc;
+    border-radius: var(--radius-medium) 0px 0px var(--radius-medium);
+    border: 1px solid var(--border-color);
     border-right: none;
+
+    transition: border-radius 0.2s ease-in-out;
 }
 
 .music-box-button-icon {
@@ -1048,12 +1101,14 @@ onUnmounted(() => {
     background-color: rgba(255, 255, 255, 0.2);
     backdrop-filter: blur(1px);
     padding: 5px 10px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
+    border-radius: var(--radius-small);
+    border: 1px solid var(--border-color);
     flex-shrink: 0;
     z-index: 5;
     text-wrap: nowrap;
     user-select: none;
+
+    transition: border-radius 0.2s ease-in-out;
 }
 
 .music-cover {
@@ -1061,30 +1116,39 @@ onUnmounted(() => {
     flex-shrink: 0;
     width: 300px;
     height: 300px;
-    border-radius: 10px;
+    /* border-radius: var(--radius-medium); */
+    border-radius: 50%;
     margin-left: 10px;
     display: flex;
     justify-content: center;
     align-items: center;
-    background: radial-gradient(circle, rgb(0, 0, 0) 0%, rgba(255, 255, 255, 1) 90%);
+    /* 模拟黑胶唱片轨道 */
+    background: repeating-radial-gradient(circle at center,
+            #1a1a1a 0px,
+            #1a1a1a 1px,
+            #3a3a3a 1px,
+            #3a3a3a 2px,
+            #1a1a1a 2px,
+            #1a1a1a 3px);
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
     user-select: none;
     overflow: hidden;
     transform-style: preserve-3d;
     transform-origin: center;
-    transition: transform 0.4s ease-in-out;
+    transition: border-radius 0.2s ease-in-out;
 }
 
-.music-cover:hover {
+/* .music-cover:hover {
     transform: perspective(1000px) scale(1.01) rotateX(8deg);
     z-index: 11;
-}
+} */
 
 .music-cover-img {
-    width: 95%;
-    height: 95%;
+    width: 80%;
+    height: 80%;
     object-fit: cover;
     -webkit-user-drag: none;
+    border-radius: 50%;
 }
 
 .music-cover:hover::after {
@@ -1173,7 +1237,9 @@ onUnmounted(() => {
 
 .music-lyric:hover {
     background-color: #00000010;
-    border-radius: 10px;
+    border-radius: var(--radius-medium);
+
+    transition: border-radius 0.2s ease-in-out;
 }
 
 .music-lyric.active {
@@ -1189,7 +1255,7 @@ onUnmounted(() => {
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    background-color: #ffffff;
+    background-color: var(--bg-primary);
     z-index: 3;
     /* box-shadow: 0 -5px 10px rgba(0, 0, 0, 0.1); */
 }
@@ -1221,16 +1287,16 @@ onUnmounted(() => {
     font-size: 1rem;
     font-weight: bold;
     line-height: 1rem;
-    background-color: #eee;
+    background-color: var(--bg-secondary);
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-    border-radius: 10px;
+    border-radius: var(--radius-medium);
     flex-shrink: 0;
     user-select: none;
-    transition: background-color 0.1s ease-in-out;
+    transition: background-color 0.1s ease-in-out, border-radius 0.2s ease-in-out;
 }
 
 .music-control-item:hover {
-    background-color: #ddd;
+    background-color: var(--bg-primary);
 }
 
 .music-control-item:active {
@@ -1259,11 +1325,11 @@ onUnmounted(() => {
     width: 100px;
     padding: 10px 0;
     background-color: #eee;
-    border-radius: 10px;
+    border-radius: var(--radius-medium);
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
     z-index: 5;
     opacity: 0;
-    transition: transform 0.5s ease-in-out, opacity 0.1s ease-in-out;
+    transition: transform 0.5s ease-in-out, opacity 0.1s ease-in-out, border-radius 0.2s ease-in-out;
 }
 
 /* 三角 */
@@ -1298,8 +1364,8 @@ onUnmounted(() => {
 }
 
 .music-control-item-menu-item.active {
-    background-color: #1890ff;
-    color: white;
+    background-color: var(--color-primary);
+    color: var(--text-on-color);
 }
 
 .music-control-item-menu-item-icon {
@@ -1325,8 +1391,8 @@ onUnmounted(() => {
     transform: translateX(-50%);
     width: 30px;
     height: 100px;
-    background-color: #eee;
-    border-radius: 10px;
+    background-color: var(--bg-primary);
+    border-radius: var(--radius-medium);
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
     display: none;
     flex-direction: column;
@@ -1334,16 +1400,18 @@ onUnmounted(() => {
     align-items: center;
     padding: 10px 0;
     opacity: 0;
-    transition: opacity 0.1s ease-in-out;
+    transition: opacity 0.1s ease-in-out, border-radius 0.2s ease-in-out;
 }
 
 .volume-slider {
     -webkit-appearance: slider-vertical;
     width: 15px;
     height: 90px;
-    background: #1890ff;
+    background-color: var(--bg-primary);
     outline: none;
-    border-radius: 5px;
+    border-radius: var(--radius-small);
+
+    transition: border-radius 0.2s ease-in-out;
 }
 
 .music-list-box {
@@ -1415,7 +1483,7 @@ onUnmounted(() => {
     font-size: 1rem;
     line-height: 1rem;
     font-weight: bold;
-    color: #000;
+    color: var(--text-primary);
     user-select: none;
 }
 
@@ -1427,11 +1495,11 @@ onUnmounted(() => {
     /* left 为 progress 的百分比 */
     left: 0%;
     transform: translate(-50%, -50%);
-    background-color: #1890ff;
+    background-color: var(--color-primary);
     border-radius: 50%;
     z-index: 3;
     border: 4px solid #fff;
-    box-shadow: 0 0 5px 1px #1890ff;
+    box-shadow: 0 0 5px 1px var(--color-primary);
     transition: transform 0.1s linear;
 }
 
@@ -1444,17 +1512,21 @@ onUnmounted(() => {
     /* width 为 progress 的百分比 */
     width: 50%;
     height: 100%;
-    background-color: #1890ff;
-    border-radius: 10px;
+    background-color: var(--color-primary);
+    border-radius: var(--radius-medium);
     z-index: 2;
+
+    transition: border-radius 0.2s ease-in-out;
 }
 
 .music-control-progress-background {
     position: absolute;
     width: 100%;
     height: 100%;
-    background-color: #eee;
-    border-radius: 10px;
+    background-color: var(--bg-primary);
+    border-radius: var(--radius-medium);
     z-index: 1;
+
+    transition: border-radius 0.2s ease-in-out;
 }
 </style>
