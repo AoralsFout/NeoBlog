@@ -38,6 +38,12 @@ import {
   getMusicList,
 } from '../controllers/music.controller';
 
+import {
+  getComments,
+  createComment,
+  toggleReaction,
+} from '../controllers/comment.controller';
+
 // 创建Express应用
 const app = express();
 const port = env.port;
@@ -99,6 +105,11 @@ app.get('/api/users/search', searchUsers);
 
 // 音乐路由
 app.get('/api/music/getMusicList', getMusicList);
+
+// 评论路由
+app.get('/api/comments', getComments);
+app.post('/api/comments', createComment);
+app.post('/api/comments/:id/reaction', toggleReaction);
 
 // 文件上传路由
 app.post('/api/upload', uploadFile);

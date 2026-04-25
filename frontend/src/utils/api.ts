@@ -178,6 +178,29 @@ export const userApi = {
 /**
  * 文件上传API
  */
+/**
+ * 评论API
+ */
+export const commentApi = {
+  /**
+   * 获取评论列表
+   */
+  getComments: (params: { source_id: string; source_type: string; page?: number; limit?: number; sort?: 'time' | 'hot' }) =>
+    get<{ success: boolean; comments: any[]; pagination: any }>(`/api/comments?source_id=${encodeURIComponent(params.source_id)}&source_type=${encodeURIComponent(params.source_type)}&page=${params.page || 1}&limit=${params.limit || 10}&sort=${params.sort || 'time'}`),
+
+  /**
+   * 创建评论
+   */
+  createComment: (data: { content: string; source_id: string; source_type: string; parent_id?: number }) =>
+    post<{ success: boolean; data: any }>('/api/comments', data),
+
+  /**
+   * 切换点赞/点踩
+   */
+  toggleReaction: (commentId: number, type: 'like' | 'dislike') =>
+    post<{ success: boolean; data: any }>(`/api/comments/${commentId}/reaction`, { type }),
+};
+
 export const uploadApi = {
   /**
    * 上传文件

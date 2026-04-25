@@ -139,6 +139,7 @@
                             <component :is="Component" />
                         </transition>
                     </router-view>
+                    <CommentBox sourceId="home" sourceType="article" />
                     <Footer />
                 </div>
                 <div class="right" v-if="showRight">
@@ -176,6 +177,7 @@ import { useLayoutStore } from '@/stores/layout';
 import { useBackgroundAnimation } from '@/composables/useBackgroundAnimation';
 import { useWaveAnimation } from '@/composables/useWaveAnimation';
 import MusicPlayer from '@/components/MusicPlayer.vue';
+import CommentBox from '@/components/CommentBox.vue';
 
 const themeStore = useThemeStore();
 const layoutStore = useLayoutStore();

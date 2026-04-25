@@ -41,6 +41,9 @@
                             </div>
                         </div>
                     </div>
+                    <div class="music-effects">
+                        <canvas ref="effectsCanvas" width="800px" height="100px"></canvas>
+                    </div>
                 </div>
                 <div class="music-control">
                     <div class="music-control-1">
@@ -105,7 +108,8 @@
                             <div class="music-control-progress" @click="handleProgressClick">
                                 <div class="music-control-progress-dot" ref="progressDot"
                                     @mousedown="handleProgressDotMouseDown" @mouseup="handleProgressDotMouseUp"></div>
-                                <div class="music-control-progress-progress"></div>
+                                <div class="music-control-progress-progress" ref="progressBar"></div>
+                                <div class="music-control-progress-buffered" ref="bufferedBar"></div>
                                 <div class="music-control-progress-background"></div>
                             </div>
                             <div class="music-control-duration">{{ displayDuration }}</div>
@@ -317,7 +321,6 @@
 
 <script setup lang="ts">
 import { onMounted, ref, nextTick, onUnmounted } from 'vue'
-import type { Ref } from 'vue'
 
 interface MusicItem {
     id: number
@@ -658,11 +661,14 @@ const handleAudioEnded = () => {
  * 进度条控制
 */
 
-const progressDot = ref<HTMLDivElement | null>(null)                 // 进度条点
-const isDraggingProgressDot = ref<boolean>(false)      // 是否正在拖动进度条点
-const currentTime = ref<number>(0)                    // 当前时间
-const duration = ref<number>(0)                       // 总时长
-const displayDuration = ref<string>('--:-- / --:--')  // 最终显示时间,格式 mm:ss / mm:ss
+const progressDot = ref<HTMLDivElement | null>(null)    // 进度条点
+const isDraggingProgressDot = ref<boolean>(false)       // 是否正在拖动进度条点
+const progressBar = ref<HTMLDivElement | null>(null)    // 进度条
+const bufferedBar = ref<HTMLDivElement | null>(null)    // 已缓冲进度条
+const currentTime = ref<number>(0)                      // 当前时间
+const duration = ref<number>(0)                         // 总时长
+const buffered = ref<number>(0)                         // 已缓冲时长
+const displayDuration = ref<string>('--:-- / --:--')    // 最终显示时间,格式 mm:ss / mm:ss
 
 // 格式化时间为 mm:ss
 const formatTime = (time: number): string => {
@@ -673,14 +679,19 @@ const formatTime = (time: number): string => {
 
 // 更新进度条显示
 const updateProgressBar = () => {
-    if (!progressDot.value) return
-
     const progress = duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0
+    const bufferedProgress = buffered.value > 0 ? (buffered.value / duration.value) * 100 : 0
 
-    progressDot.value.style.left = `${progress}%`
-    const nextSibling = progressDot.value.nextElementSibling as HTMLElement
-    if (nextSibling) {
-        nextSibling.style.width = `${progress}%`
+    if (progressDot.value) {
+        progressDot.value.style.left = `${progress}%`
+    }
+
+    if (progressBar.value) {
+        progressBar.value.style.width = `${progress}%`
+    }
+
+    if (bufferedBar.value) {
+        bufferedBar.value.style.width = `${bufferedProgress}%`
     }
 
     // 更新显示的时间
@@ -765,6 +776,7 @@ const handleTimeUpdate = () => {
     // 拖动过程中不更新时间
     if (!isDraggingProgressDot.value) {
         currentTime.value = audio.value.currentTime
+        buffered.value = audio.value.buffered.end(audio.value.buffered.length - 1)
         updateProgressBar()
     }
 
@@ -910,12 +922,13 @@ const applyTogglePlayModeMenuAnimation = () => {
  * 音频特效相关
 */
 const musicCover = ref<HTMLElement | null>(null)
+const effectsCanvas = ref<HTMLCanvasElement | null>(null)
 const isCoverHover = ref(false);
 const audioCtx = new AudioContext();
 const analyser = audioCtx.createAnalyser();
 let source: MediaElementAudioSourceNode | null = null;
 analyser.connect(audioCtx.destination);
-analyser.fftSize = 2048;
+analyser.fftSize = 512;
 
 const AudioAnimation = () => {
     // 获取频率数据
@@ -935,15 +948,66 @@ const AudioAnimation = () => {
 
     const amplitude = weightedSum / weightSum;
 
-    // 将振幅绑定到唱片缩放属性
-
     // 将振幅映射到缩放值
     const scale = ((amplitude / 255) - 0.7) / 2.5 + 1
+    // 将振幅绑定到唱片缩放属性
     if (musicCover.value) {
         musicCover.value.style.transform = `scale(${scale})`;
     }
 
+    // 绘制音频频谱
+    drawAudio(freData)
+
     requestAnimationFrame(AudioAnimation);
+}
+
+const drawAudio = (freData: Uint8Array) => {
+    if (!effectsCanvas.value) return
+
+    const ctx = effectsCanvas.value.getContext('2d')
+    if (ctx) {
+        const height = effectsCanvas.value.height
+        const width = effectsCanvas.value.width
+        ctx.clearRect(0, 0, width, height)
+
+        // 获取 CSS 主题色
+        const style = getComputedStyle(document.documentElement)
+        const primaryColor = style.getPropertyValue('--color-primary').trim()
+        const r = parseInt(primaryColor.slice(1, 3), 16) || 100
+        const g = parseInt(primaryColor.slice(3, 5), 16) || 100
+        const b = parseInt(primaryColor.slice(5, 7), 16) || 255
+
+        const centerX = width / 2
+        const halfCount = Math.floor(freData.length / 2)
+        const step = centerX / halfCount
+        const barWidth = Math.max(1, step * 0.7)
+
+        for (let i = 0; i < halfCount; i++) {
+            // 对称平均
+            const value = (freData[i]! + freData[freData.length - 1 - i]!) / 2
+            const barHeight = (value / 255) * height * 0.85
+
+            // 低高度透明度高，高高度透明度低
+            const alpha = 0.75 + (value / 255) * 0.25
+            ctx.globalAlpha = alpha
+
+            // 垂直渐变：底部实色 → 顶部透明
+            const grad = ctx.createLinearGradient(0, height, 0, height - barHeight)
+            grad.addColorStop(0, `rgba(${r},${g},${b},1)`)
+            grad.addColorStop(1, `rgba(${r},${g},${b},0)`)
+            ctx.fillStyle = grad
+
+            // 右侧
+            ctx.fillRect(centerX + i * step, height - barHeight, barWidth, barHeight)
+            // 左侧镜像
+            ctx.fillRect(centerX - (i + 1) * step, height - barHeight, barWidth, barHeight)
+        }
+
+        ctx.globalAlpha = 1.0
+    }
+}
+
+const handleResize = () => {
 }
 
 // 在组件挂载时添加音频事件监听
@@ -1136,6 +1200,7 @@ onUnmounted(() => {
     transform-style: preserve-3d;
     transform-origin: center;
     transition: border-radius 0.2s ease-in-out;
+    z-index: 1;
 }
 
 /* .music-cover:hover {
@@ -1178,6 +1243,7 @@ onUnmounted(() => {
     flex-direction: column;
     justify-content: space-around;
     align-items: center;
+    z-index: 1;
 }
 
 .music-title {
@@ -1423,7 +1489,7 @@ onUnmounted(() => {
     background-color: #ffffff;
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
     overflow-y: auto;
-    z-index: 1;
+    z-index: 2;
     transform: translateX(480px);
     transition: transform 0.5s ease-in-out;
 }
@@ -1497,7 +1563,7 @@ onUnmounted(() => {
     transform: translate(-50%, -50%);
     background-color: var(--color-primary);
     border-radius: 50%;
-    z-index: 3;
+    z-index: 4;
     border: 4px solid #fff;
     box-shadow: 0 0 5px 1px var(--color-primary);
     transition: transform 0.1s linear;
@@ -1514,19 +1580,49 @@ onUnmounted(() => {
     height: 100%;
     background-color: var(--color-primary);
     border-radius: var(--radius-medium);
+    z-index: 3;
+
+    transition: border-radius 0.2s ease-in-out;
+}
+
+.music-control-progress-buffered {
+    position: absolute;
+    /* width 为 progress 的百分比 */
+    width: 50%;
+    height: 100%;
+    background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    border-radius: var(--radius-medium);
     z-index: 2;
 
     transition: border-radius 0.2s ease-in-out;
 }
 
+
 .music-control-progress-background {
     position: absolute;
     width: 100%;
     height: 100%;
-    background-color: var(--bg-primary);
+    background-color: var(--bg-secondary);
     border-radius: var(--radius-medium);
     z-index: 1;
 
     transition: border-radius 0.2s ease-in-out;
+}
+
+.music-effects {
+    width: 100%;
+    height: 100px;
+    position: absolute;
+    bottom: 0;
+    z-index: 0;
+    /* background-color: var(--color-primary); */
+
+    >.canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+    }
 }
 </style>
