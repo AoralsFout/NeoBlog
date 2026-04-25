@@ -63,7 +63,7 @@
                             </div>
                         </div>
                         <div class="music-control-item" @click="playPauseMusic">
-                            <div v-if="audioPause" class="music-control-item-icon">
+                            <div v-if="audio?.paused" class="music-control-item-icon">
                                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
                                     class="music-control-item-icon-svg">
                                     <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
@@ -109,7 +109,11 @@
                                 <div class="music-control-progress-dot" ref="progressDot"
                                     @mousedown="handleProgressDotMouseDown" @mouseup="handleProgressDotMouseUp"></div>
                                 <div class="music-control-progress-progress" ref="progressBar"></div>
-                                <div class="music-control-progress-buffered" ref="bufferedBar"></div>
+                                <div class="music-control-progress-buffered-container">
+                                    <div v-for="(range, index) in bufferedRanges" :key="index"
+                                        class="music-control-progress-buffered"
+                                        :style="getBufferedRangeStyle(range)"></div>
+                                </div>
                                 <div class="music-control-progress-background"></div>
                             </div>
                             <div class="music-control-duration">{{ displayDuration }}</div>
@@ -320,7 +324,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, nextTick, onUnmounted } from 'vue'
+import { onMounted, ref, nextTick, onUnmounted, computed } from 'vue'
 
 interface MusicItem {
     id: number
@@ -350,10 +354,10 @@ const musicTip = ref<string>('')
  * 音乐盒动画
 */
 
-const musicBox = ref<HTMLDivElement | null>(null);               // 音乐盒
-const musicBoxButtonIcon = ref<HTMLElement | null>(null);     // 音乐盒展开收起按钮图标
-const isMusicBoxOpen = ref<boolean>(false);        // 音乐盒是否展开
-const musicBoxButtonIconImg = ref<HTMLElement | null>(null);  // 音乐盒展开收起按钮图标图片
+const musicBox = ref<HTMLDivElement | null>(null);              // 音乐盒
+const musicBoxButtonIcon = ref<HTMLElement | null>(null);       // 音乐盒展开收起按钮图标
+const isMusicBoxOpen = ref<boolean>(false);                     // 音乐盒是否展开
+const musicBoxButtonIconImg = ref<HTMLElement | null>(null);    // 音乐盒展开收起按钮图标图片
 
 // 展开收起音乐盒
 const toggleMusicBox = () => {
@@ -495,7 +499,6 @@ const loadMusic = () => {
     if (!audio.value || !currentMusic.value) return
     audio.value.src = '/musics/music/' + currentMusic.value.id + '.' + currentMusic.value.format;
     audio.value.play();
-    audioPause.value = false;
     audio.value.volume = volume.value;
 };
 
@@ -504,7 +507,6 @@ const switchMusic = (index: number) => {
     if (audio.value) {
         audio.value.pause();
     }
-    audioPause.value = true;
     currentMusic.value = musicList.value[index] as MusicItem;
     getLyricsData();
     nextTick(() => {
@@ -518,10 +520,8 @@ const playPauseMusic = () => {
     if (!audio.value) return
     if (audio.value.paused) {
         audio.value.play();
-        audioPause.value = false;
     } else {
         audio.value.pause();
-        audioPause.value = true;
     }
 }
 
@@ -605,8 +605,6 @@ const applyToggleVolumeControlAnimation = () => {
     }
 }
 
-const audioPause = ref<boolean>(false)
-
 // 音量控制条 @change 事件触发
 // 更改音量
 const changeVolume = () => {
@@ -646,10 +644,8 @@ const handleAudioEnded = () => {
         // 单曲循环：重新播放当前歌曲
         audio.value.currentTime = 0;
         audio.value.play();
-        audioPause.value = false;
     } else if (playMode.value === 'stop') {
         audio.value.pause();
-        audioPause.value = true;
     } else if (playMode.value === 'order') {
         nextMusic();
     } else if (playMode.value === 'random') {
@@ -664,10 +660,9 @@ const handleAudioEnded = () => {
 const progressDot = ref<HTMLDivElement | null>(null)    // 进度条点
 const isDraggingProgressDot = ref<boolean>(false)       // 是否正在拖动进度条点
 const progressBar = ref<HTMLDivElement | null>(null)    // 进度条
-const bufferedBar = ref<HTMLDivElement | null>(null)    // 已缓冲进度条
 const currentTime = ref<number>(0)                      // 当前时间
 const duration = ref<number>(0)                         // 总时长
-const buffered = ref<number>(0)                         // 已缓冲时长
+const bufferedRanges = ref<Array<{ start: number, end: number }>>([]) // 缓冲区间
 const displayDuration = ref<string>('--:-- / --:--')    // 最终显示时间,格式 mm:ss / mm:ss
 
 // 格式化时间为 mm:ss
@@ -680,7 +675,6 @@ const formatTime = (time: number): string => {
 // 更新进度条显示
 const updateProgressBar = () => {
     const progress = duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0
-    const bufferedProgress = buffered.value > 0 ? (buffered.value / duration.value) * 100 : 0
 
     if (progressDot.value) {
         progressDot.value.style.left = `${progress}%`
@@ -690,12 +684,16 @@ const updateProgressBar = () => {
         progressBar.value.style.width = `${progress}%`
     }
 
-    if (bufferedBar.value) {
-        bufferedBar.value.style.width = `${bufferedProgress}%`
-    }
-
     // 更新显示的时间
     displayDuration.value = `${formatTime(currentTime.value)} / ${formatTime(duration.value)}`
+}
+
+// 计算每个缓冲区间在进度条上的位置和宽度（百分比）
+const getBufferedRangeStyle = (range: { start: number, end: number }) => {
+    if (duration.value <= 0) return { left: '0%', width: '0%' }
+    const left = (range.start / duration.value) * 100
+    const width = ((range.end - range.start) / duration.value) * 100
+    return { left: `${left}%`, width: `${width}%` }
 }
 
 // 音频加载元数据事件
@@ -776,7 +774,12 @@ const handleTimeUpdate = () => {
     // 拖动过程中不更新时间
     if (!isDraggingProgressDot.value) {
         currentTime.value = audio.value.currentTime
-        buffered.value = audio.value.buffered.end(audio.value.buffered.length - 1)
+        // 收集所有缓冲区间
+        const ranges: Array<{ start: number, end: number }> = []
+        for (let i = 0; i < audio.value.buffered.length; i++) {
+            ranges.push({ start: audio.value.buffered.start(i), end: audio.value.buffered.end(i) })
+        }
+        bufferedRanges.value = ranges
         updateProgressBar()
     }
 
@@ -784,7 +787,7 @@ const handleTimeUpdate = () => {
 
     // 处理歌词active
     lyricsData.value.forEach((lyric, index) => {
-        if (audio.value && (audio.value.currentTime >= lyric.time && audio.value.currentTime < lyricsData.value[index + 1]!.time)) {
+        if (audio.value && (audio.value.currentTime >= lyric.time && audio.value.currentTime < (lyricsData.value[index + 1]?.time || duration.value))) {
             const element = lyricElements.value[index]
             if (element && !element.classList.contains('active')) {
                 element.classList.add('active');
@@ -800,7 +803,7 @@ const handleTimeUpdate = () => {
 
     // 处理翻译歌词
     translatedLyricsData.value.forEach((lyric, index) => {
-        if (audio.value && (audio.value.currentTime >= lyric.time && audio.value.currentTime < translatedLyricsData.value[index + 1]!.time)) {
+        if (audio.value && (audio.value.currentTime >= lyric.time && audio.value.currentTime < (lyricsData.value[index + 1]?.time || duration.value))) {
             const element = translatedLyricElements.value[index]
             if (element && !element.classList.contains('active')) {
                 element.classList.add('active');
@@ -1005,9 +1008,6 @@ const drawAudio = (freData: Uint8Array) => {
 
         ctx.globalAlpha = 1.0
     }
-}
-
-const handleResize = () => {
 }
 
 // 在组件挂载时添加音频事件监听
@@ -1241,7 +1241,6 @@ onUnmounted(() => {
     height: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: space-around;
     align-items: center;
     z-index: 1;
 }
@@ -1252,6 +1251,7 @@ onUnmounted(() => {
     align-items: center;
     width: 100%;
     height: 2rem;
+    margin-top: 2rem;
     font-size: 1.5rem;
     font-weight: bold;
     color: #fff;
@@ -1275,6 +1275,7 @@ onUnmounted(() => {
 
 .music-lyrics {
     position: relative;
+    margin-top: 1rem;
     max-height: 240px;
     width: 100%;
     display: flex;
@@ -1585,16 +1586,20 @@ onUnmounted(() => {
     transition: border-radius 0.2s ease-in-out;
 }
 
+.music-control-progress-buffered-container {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    overflow: hidden;
+    border-radius: var(--radius-medium);
+}
+
 .music-control-progress-buffered {
     position: absolute;
-    /* width 为 progress 的百分比 */
-    width: 50%;
     height: 100%;
-    background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
-    border-radius: var(--radius-medium);
-    z-index: 2;
-
-    transition: border-radius 0.2s ease-in-out;
+    background-color: color-mix(in srgb, var(--color-primary) 15%, transparent);
+    border-radius: var(--radius-small);
 }
 
 
