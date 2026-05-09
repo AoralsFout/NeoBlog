@@ -201,6 +201,35 @@ export const commentApi = {
     post<{ success: boolean; data: any }>(`/api/comments/${commentId}/reaction`, { type }),
 };
 
+/**
+ * 文章API
+ */
+export const articleApi = {
+  getArticles: (params: { page?: number; limit?: number; sort?: 'time' | 'hot'; tag?: string }) => {
+    const searchParams = new URLSearchParams();
+    searchParams.set('page', String(params.page || 1));
+    searchParams.set('limit', String(params.limit || 5));
+    searchParams.set('sort', params.sort || 'time');
+    if (params.tag) searchParams.set('tag', params.tag);
+    return get<{ success: boolean; articles: any[]; pagination: any }>(`/api/articles?${searchParams.toString()}`);
+  },
+
+  getTopArticles: (limit: number = 3) =>
+    get<{ success: boolean; data: any[] }>(`/api/articles/top`),
+
+  getArticleById: (id: number) =>
+    get<{ success: boolean; data: any }>(`/api/articles/${id}`),
+
+  createArticle: (data: { title: string; content: string; summary?: string; cover_image?: string; tags?: string }) =>
+    post<{ success: boolean; data: any }>('/api/articles', data),
+
+  updateArticle: (id: number, data: { title?: string; content?: string; summary?: string; cover_image?: string; tags?: string }) =>
+    patch<{ success: boolean; data: any }>(`/api/articles/${id}`, data),
+
+  deleteArticle: (id: number) =>
+    del<{ success: boolean; message: string }>(`/api/articles/${id}`),
+};
+
 export const uploadApi = {
   /**
    * 上传文件

@@ -44,6 +44,15 @@ import {
   toggleReaction,
 } from '../controllers/comment.controller';
 
+import {
+  getArticles,
+  getArticleById,
+  getTopArticles,
+  createArticle,
+  updateArticle,
+  deleteArticle,
+} from '../controllers/article.controller';
+
 // 创建Express应用
 const app = express();
 const port = env.port;
@@ -110,6 +119,14 @@ app.get('/api/music/getMusicList', getMusicList);
 app.get('/api/comments', getComments);
 app.post('/api/comments', createComment);
 app.post('/api/comments/:id/reaction', toggleReaction);
+
+// 文章路由
+app.get('/api/articles/top', getTopArticles);
+app.get('/api/articles', getArticles);
+app.get('/api/articles/:id', getArticleById);
+app.post('/api/articles', createArticle);
+app.patch('/api/articles/:id', updateArticle);
+app.delete('/api/articles/:id', deleteArticle);
 
 // 文件上传路由
 app.post('/api/upload', uploadFile);

@@ -36,15 +36,35 @@ enum Status {
   FROZEN
 }
 
-model Music {
+model Article {
   id          Int      @id @default(autoincrement())
   title       String
-  author      String
-  album       String
-  mainColor  String   @map("mainColor")
-  language    String
-  isTranslate Boolean @map("isTranslate")
-  format      String
+  content     String   @db.LongText
+  summary     String?  @db.VarChar(500)
+  cover_image String?
+  tags        String?  @db.VarChar(500)
+  views       Int      @default(0)
+  author_id   Int
+  created_at  DateTime @default(now()) @map("created_at")
+  updated_at  DateTime @updatedAt @map("updated_at")
+
+  @@map("articles")
+}
+
+model Music {
+  id          Int      @id @default(autoincrement())
+  title       String   @default("未知歌曲") @db.VarChar(255)
+  author      String   @default("佚名") @db.VarChar(255)
+  album       String?  @db.VarChar(255)
+  format      String?  @default("mp3") @db.VarChar(50)
+  duration    String?  @db.VarChar(10)
+  chorusIn    Float?
+  chorusOut   Float?
+  BPM         Int?
+  language    String?  @db.VarChar(50)
+  isTranslate Boolean? @map("isTranslate")
+  bgPositionY Int?
+  mainColor   String?  @default("#ffffff") @db.VarChar(50) @map("mainColor")
 
   @@map("musics")
 }

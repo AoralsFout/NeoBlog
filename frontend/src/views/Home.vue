@@ -123,6 +123,10 @@
                             </div>
                         </template>
                     </Card>
+                    <TableOfContents
+                        v-if="showToc"
+                        :headings="articleStore.headings"
+                    />
                     <Card v-if="showRightInLeft">
                         <template #header>右侧栏（移至左侧）</template>
                         <template #body>
@@ -139,7 +143,7 @@
                             <component :is="Component" />
                         </transition>
                     </router-view>
-                    <CommentBox sourceId="home" sourceType="article" />
+                    <CommentBox sourceId="home" sourceType="page" />
                     <Footer />
                 </div>
                 <div class="right" v-if="showRight">
@@ -173,20 +177,27 @@ import Footer from '@/components/Footer.vue';
 import MusicBox from '@/components/MusicBox.vue';
 import { useThemeStore } from '@/stores/theme';
 import { ref, onMounted, computed, onBeforeUnmount } from 'vue';
+import { useRoute } from 'vue-router';
 import { useLayoutStore } from '@/stores/layout';
+import { useArticleStore } from '@/stores/article';
 import { useBackgroundAnimation } from '@/composables/useBackgroundAnimation';
 import { useWaveAnimation } from '@/composables/useWaveAnimation';
 import MusicPlayer from '@/components/MusicPlayer.vue';
 import CommentBox from '@/components/CommentBox.vue';
+import TableOfContents from '@/components/TableOfContents.vue';
 
+const route = useRoute();
 const themeStore = useThemeStore();
 const layoutStore = useLayoutStore();
+const articleStore = useArticleStore();
 
 const theme = computed(() => themeStore.theme);
 const layout = computed(() => layoutStore.layout);
 
 const windowWidth = ref(window.innerWidth);
 
+// 文章详情页时显示目录
+const showToc = computed(() => route.name === '文章详情' && articleStore.headings.length > 0);
 
 // 有效布局：小屏幕强制两栏，手机强制单栏（通过CSS处理）
 const effectiveLayout = computed(() => {

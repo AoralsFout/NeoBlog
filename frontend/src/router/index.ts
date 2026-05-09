@@ -15,6 +15,21 @@ const router = createRouter({
           component: () => import('@/views/Articles.vue'),
         },
         {
+          path: '/article/new',
+          name: '写文章',
+          component: () => import('@/views/ArticleEditor.vue'),
+        },
+        {
+          path: '/article/:id/edit',
+          name: '编辑文章',
+          component: () => import('@/views/ArticleEditor.vue'),
+        },
+        {
+          path: '/article/:id',
+          name: '文章详情',
+          component: () => import('@/views/ArticleDetail.vue'),
+        },
+        {
           path: '/settings',
           name: '设置',
           component: () => import('@/views/Settings.vue'),

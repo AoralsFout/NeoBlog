@@ -5,11 +5,11 @@ interface MusicItem {
   id: number;
   title: string;
   author: string;
-  album: string;
-  mainColor: string;
-  language: string;
-  isTranslate: boolean;
-  format: string;
+  album: string | null;
+  mainColor: string | null;
+  language: string | null;
+  isTranslate: boolean | null;
+  format: string | null;
 }
 
 class MusicService {
