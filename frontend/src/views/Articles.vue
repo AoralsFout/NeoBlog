@@ -3,7 +3,7 @@
     <div class="header">
       <div class="title-row">
         <span class="section-title">文章列表</span>
-        <router-link to="/article/new" class="new-btn" v-if="userStore.isAuthenticated">
+        <router-link to="/article/new" class="new-btn" v-if="userStore.isAdmin">
           <Button size="sm">写文章</Button>
         </router-link>
       </div>
@@ -19,16 +19,6 @@
       <div v-if="loading" class="state">加载中...</div>
       <div v-else-if="error" class="state error">{{ error }}</div>
       <template v-else>
-        <!-- Top 3 featured articles -->
-        <div class="featured" v-if="showFeatured && topArticles.length">
-          <ArticleCard
-            v-for="a in topArticles"
-            :key="a.id"
-            :article="a"
-            class="featured-card"
-          />
-        </div>
-
         <!-- Article list -->
         <div v-if="articles.length" class="list">
           <ArticleCard v-for="a in articles" :key="a.id" :article="a" />
@@ -42,6 +32,8 @@
         />
       </template>
     </div>
+
+    <CommentBox sourceId="home" sourceType="page" />
   </div>
 </template>
 
@@ -53,6 +45,7 @@ import { useUserStore } from '@/stores/user';
 import ArticleCard from '@/components/ArticleCard.vue';
 import Pagination from '@/components/Pagination.vue';
 import Button from '@/components/Button.vue';
+import CommentBox from '@/components/CommentBox.vue';
 import type { Article, Pagination as PaginationType } from '@/types/article';
 
 const route = useRoute();
@@ -118,20 +111,20 @@ onMounted(() => {
   width: 100%;
   display: flex;
   flex-direction: column;
-  background-color: var(--bg-primary);
+  /* background-color: var(--bg-primary);
   border-radius: var(--radius-small);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  transition: background-color 0.2s ease-in-out, border-radius 0.2s ease-in-out;
+  transition: background-color 0.2s ease-in-out, border-radius 0.2s ease-in-out; */
 }
 
 .header {
   position: relative;
-  padding: 10px 20px;
-  border-bottom: 1px dashed var(--color-primary);
+  padding: 20px 10px;
+  /* border-bottom: 1px dashed var(--color-primary); */
 }
 
 .header::after {
-  content: '';
+  /* content: '';
   position: absolute;
   top: 10px;
   left: 10px;
@@ -139,7 +132,7 @@ onMounted(() => {
   border-radius: 3px;
   height: calc(100% - 20px);
   background-color: var(--color-primary);
-  transition: background-color 0.2s ease-in-out;
+  transition: background-color 0.2s ease-in-out; */
 }
 
 .title-row {
@@ -183,7 +176,7 @@ onMounted(() => {
 }
 
 .content {
-  padding: 1rem;
+  /* padding: 1rem; */
 }
 
 .state {

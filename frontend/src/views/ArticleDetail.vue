@@ -4,27 +4,30 @@
     <div v-else-if="error" class="state error">{{ error }}</div>
     <div v-else-if="!article" class="state">文章不存在</div>
     <template v-else>
-      <div class="article-header">
-        <div class="cover" v-if="article.cover_image">
-          <img :src="article.cover_image" :alt="article.title" />
+      <div class="article-container">
+        <div class="article-header">
+          <div class="cover" v-if="article.cover_image">
+            <img :src="article.cover_image" :alt="article.title" />
+          </div>
+          <h1 class="title">{{ article.title }}</h1>
+          <div class="meta">
+            <span class="author" v-if="article.author">
+              <img v-if="article.author.avatar" :src="'/' + article.author.avatar" class="author-avatar" />
+              {{ article.author.username }}
+            </span>
+            <span class="date">{{ formatDate(article.created_at) }}</span>
+            <span class="views">{{ article.views }} 浏览</span>
+            <span class="comments-count">{{ article.comment_count || 0 }} 评论</span>
+          </div>
+          <div class="tags" v-if="tagList.length">
+            <span class="tag" v-for="tag in tagList" :key="tag">{{ tag }}</span>
+          </div>
         </div>
-        <h1 class="title">{{ article.title }}</h1>
-        <div class="meta">
-          <span class="author" v-if="article.author">
-            <img v-if="article.author.avatar" :src="article.author.avatar" class="author-avatar" />
-            {{ article.author.username }}
-          </span>
-          <span class="date">{{ formatDate(article.created_at) }}</span>
-          <span class="views">{{ article.views }} 浏览</span>
-          <span class="comments-count">{{ article.comment_count || 0 }} 评论</span>
+        <div class="article-content markdown-body" ref="contentRef" v-html="renderedContent"></div>
+        <div class="article-footer">
+          <Button v-if="canEdit" size="sm" @click="goEdit">编辑文章</Button>
+          <Button size="sm" @click="goBack">返回</Button>
         </div>
-        <div class="tags" v-if="tagList.length">
-          <span class="tag" v-for="tag in tagList" :key="tag">{{ tag }}</span>
-        </div>
-      </div>
-      <div class="article-content markdown-body" ref="contentRef" v-html="renderedContent"></div>
-      <div class="article-footer">
-        <Button v-if="canEdit" size="sm" @click="goEdit">编辑文章</Button>
       </div>
       <CommentBox :sourceId="String(article.id)" sourceType="article" />
     </template>
@@ -83,7 +86,7 @@ markedRenderer.code = function ({ text, lang }: { text: string; lang?: string })
     try {
       const highlighted = hljs.highlight(text, { language: lang }).value;
       return `<pre><code class="hljs language-${lang}">${highlighted}</code></pre>`;
-    } catch {}
+    } catch { }
   }
   return `<pre><code>${text}</code></pre>`;
 };
@@ -111,6 +114,10 @@ function extractHeadings(content: string) {
 
 function goEdit() {
   router.push(`/article/${articleId.value}/edit`);
+}
+
+function goBack() {
+  router.back();
 }
 
 function formatDate(dateStr: string): string {
@@ -150,16 +157,21 @@ onBeforeUnmount(() => articleStore.clearHeadings());
   width: 100%;
   display: flex;
   flex-direction: column;
-  background-color: var(--bg-primary);
+  gap: 1rem;
+  /* background-color: var(--bg-primary);
   border-radius: var(--radius-small);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  transition: background-color 0.2s ease-in-out, border-radius 0.2s ease-in-out;
+  transition: background-color 0.2s ease-in-out, border-radius 0.2s ease-in-out; */
 }
 
 .state {
   padding: 3rem;
   text-align: center;
   color: var(--text-secondary);
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-small);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.2s ease-in-out, border-radius 0.2s ease-in-out;
 }
 
 .state.error {
@@ -170,12 +182,22 @@ onBeforeUnmount(() => articleStore.clearHeadings());
   padding: 2rem 2rem 0;
 }
 
+.article-container {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-small);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.2s ease-in-out, border-radius 0.2s ease-in-out;
+}
+
 .cover {
   width: 100%;
   max-height: 300px;
   overflow: hidden;
   border-radius: var(--radius-medium);
   margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .cover img {
@@ -247,9 +269,17 @@ onBeforeUnmount(() => articleStore.clearHeadings());
   margin-bottom: 0.5em;
 }
 
-.markdown-body :deep(h1) { font-size: 1.6rem; }
-.markdown-body :deep(h2) { font-size: 1.3rem; }
-.markdown-body :deep(h3) { font-size: 1.1rem; }
+.markdown-body :deep(h1) {
+  font-size: 1.6rem;
+}
+
+.markdown-body :deep(h2) {
+  font-size: 1.3rem;
+}
+
+.markdown-body :deep(h3) {
+  font-size: 1.1rem;
+}
 
 .markdown-body :deep(p) {
   line-height: 1.8;

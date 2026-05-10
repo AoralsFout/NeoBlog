@@ -143,7 +143,6 @@
                             <component :is="Component" />
                         </transition>
                     </router-view>
-                    <CommentBox sourceId="home" sourceType="page" />
                     <Footer />
                 </div>
                 <div class="right" v-if="showRight">

@@ -84,6 +84,9 @@ function formatDate(dateStr: string): string {
   max-height: 200px;
   overflow: hidden;
   border-radius: var(--radius-medium);
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .cover img {

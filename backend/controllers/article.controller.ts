@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import articleService from '../services/article.service';
-import { extractTokenFromHeader, verifyToken } from '../utils/jwt';
 import logger from '../utils/logger';
 
 export const getArticles = async (req: Request, res: Response) => {
@@ -67,22 +66,6 @@ export const getTopArticles = async (_req: Request, res: Response) => {
 
 export const createArticle = async (req: Request, res: Response) => {
   try {
-    const token = extractTokenFromHeader(req.headers.authorization);
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        error: { code: 'UNAUTHORIZED', message: '请先登录' },
-      });
-    }
-
-    const payload = verifyToken(token);
-    if (!payload) {
-      return res.status(401).json({
-        success: false,
-        error: { code: 'INVALID_TOKEN', message: '无效的认证令牌' },
-      });
-    }
-
     const { title, content, summary, cover_image, tags } = req.body;
 
     if (!title || !title.trim()) {
@@ -101,7 +84,7 @@ export const createArticle = async (req: Request, res: Response) => {
 
     const article = await articleService.createArticle(
       { title: title.trim(), content: content.trim(), summary, cover_image, tags },
-      payload.userId
+      req.user!.userId
     );
 
     res.status(201).json({ success: true, data: article });
@@ -116,22 +99,6 @@ export const createArticle = async (req: Request, res: Response) => {
 
 export const updateArticle = async (req: Request, res: Response) => {
   try {
-    const token = extractTokenFromHeader(req.headers.authorization);
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        error: { code: 'UNAUTHORIZED', message: '请先登录' },
-      });
-    }
-
-    const payload = verifyToken(token);
-    if (!payload) {
-      return res.status(401).json({
-        success: false,
-        error: { code: 'INVALID_TOKEN', message: '无效的认证令牌' },
-      });
-    }
-
     const id = parseInt(String(req.params.id), 10);
     if (isNaN(id)) {
       return res.status(400).json({
@@ -145,13 +112,6 @@ export const updateArticle = async (req: Request, res: Response) => {
       return res.status(404).json({
         success: false,
         error: { code: 'NOT_FOUND', message: '文章不存在' },
-      });
-    }
-
-    if (existing.author_id !== payload.userId && payload.role !== 'ADMIN') {
-      return res.status(403).json({
-        success: false,
-        error: { code: 'FORBIDDEN', message: '无权修改此文章' },
       });
     }
 
@@ -170,22 +130,6 @@ export const updateArticle = async (req: Request, res: Response) => {
 
 export const deleteArticle = async (req: Request, res: Response) => {
   try {
-    const token = extractTokenFromHeader(req.headers.authorization);
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        error: { code: 'UNAUTHORIZED', message: '请先登录' },
-      });
-    }
-
-    const payload = verifyToken(token);
-    if (!payload) {
-      return res.status(401).json({
-        success: false,
-        error: { code: 'INVALID_TOKEN', message: '无效的认证令牌' },
-      });
-    }
-
     const id = parseInt(String(req.params.id), 10);
     if (isNaN(id)) {
       return res.status(400).json({
@@ -199,13 +143,6 @@ export const deleteArticle = async (req: Request, res: Response) => {
       return res.status(404).json({
         success: false,
         error: { code: 'NOT_FOUND', message: '文章不存在' },
-      });
-    }
-
-    if (existing.author_id !== payload.userId && payload.role !== 'ADMIN') {
-      return res.status(403).json({
-        success: false,
-        error: { code: 'FORBIDDEN', message: '无权删除此文章' },
       });
     }
 

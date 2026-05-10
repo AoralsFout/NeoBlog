@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
+// 新增: 导入 useUserStore
+import { useUserStore } from '@/stores/user'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -18,11 +20,13 @@ const router = createRouter({
           path: '/article/new',
           name: '写文章',
           component: () => import('@/views/ArticleEditor.vue'),
+          meta: { requiresAdmin: true }
         },
         {
           path: '/article/:id/edit',
           name: '编辑文章',
           component: () => import('@/views/ArticleEditor.vue'),
+          meta: { requiresAdmin: true }
         },
         {
           path: '/article/:id',
@@ -57,6 +61,20 @@ const router = createRouter({
       component: () => import('@/views/404.vue'),
     }
   ],
+})
+
+// 全局前置守卫
+router.beforeEach((to, from, next) => {
+  const userStore = useUserStore()
+  
+  if (to.meta.requiresAdmin) {
+    if (!userStore.isAuthenticated || !userStore.isAdmin) {
+      next('/')
+      return
+    }
+  }
+  
+  next()
 })
 
 export default router

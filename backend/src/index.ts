@@ -52,6 +52,7 @@ import {
   updateArticle,
   deleteArticle,
 } from '../controllers/article.controller';
+import { authenticate, requireAdmin } from '../middleware/auth';
 
 // 创建Express应用
 const app = express();
@@ -124,9 +125,9 @@ app.post('/api/comments/:id/reaction', toggleReaction);
 app.get('/api/articles/top', getTopArticles);
 app.get('/api/articles', getArticles);
 app.get('/api/articles/:id', getArticleById);
-app.post('/api/articles', createArticle);
-app.patch('/api/articles/:id', updateArticle);
-app.delete('/api/articles/:id', deleteArticle);
+app.post('/api/articles', authenticate, requireAdmin, createArticle);
+app.patch('/api/articles/:id', authenticate, requireAdmin, updateArticle);
+app.delete('/api/articles/:id', authenticate, requireAdmin, deleteArticle);
 
 // 文件上传路由
 app.post('/api/upload', uploadFile);

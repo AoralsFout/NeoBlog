@@ -5,7 +5,7 @@
     </div>
     <div class="content">
       <div v-if="loading" class="state">加载中...</div>
-      <div v-else-if="!userStore.isAuthenticated" class="state">请先登录</div>
+      <div v-else-if="!userStore.isAdmin" class="state">请先登录</div>
       <form v-else class="editor-form" @submit.prevent="handleSubmit">
         <div class="field">
           <label>标题</label>
@@ -42,7 +42,7 @@
         </div>
         <div class="actions">
           <Button :loading="submitting">{{ isEdit ? '保存修改' : '发布文章' }}</Button>
-          <button type="button" class="cancel-btn" @click="goBack">取消</button>
+          <Button type="outline" @click="goBack">取消</Button>
         </div>
         <div v-if="submitError" class="submit-error">{{ submitError }}</div>
       </form>
@@ -254,22 +254,6 @@ onMounted(async () => {
   display: flex;
   gap: 0.75rem;
   align-items: center;
-}
-
-.cancel-btn {
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  border: 1px solid var(--color-primary);
-  border-radius: var(--radius-small);
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.cancel-btn:hover {
-  color: var(--text-on-color);
-  background-color: var(--color-primary);
 }
 
 .submit-error {
