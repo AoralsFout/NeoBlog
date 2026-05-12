@@ -127,15 +127,7 @@
                         v-if="showToc"
                         :headings="articleStore.headings"
                     />
-                    <Card v-if="showRightInLeft">
-                        <template #header>右侧栏（移至左侧）</template>
-                        <template #body>
-                            <div class="card-body">
-                                <p>右侧内容，例如标签云、最新评论、广告等。</p>
-                                <p>选择两栏布局时，此内容会移动到左侧。</p>
-                            </div>
-                        </template>
-                    </Card>
+                    <RightSidebar v-if="showRightInLeft" />
                 </div>
                 <div class="main">
                     <router-view v-slot="{ Component }">
@@ -146,23 +138,7 @@
                     <Footer />
                 </div>
                 <div class="right" v-if="showRight">
-                    <Card>
-                        <template #header>右侧卡片1</template>
-                        <template #body>
-                            <div class="card-body">
-                                <p>Ciallo～(∠・ω< )⌒★</p>
-                            </div>
-                        </template>
-                    </Card>
-                    <Card>
-                        <template #header>右侧卡片2</template>
-                        <template #body>
-                            <div class="card-body">
-                                <p>Ciallo～(∠・ω< )⌒★</p>
-                            </div>
-                        </template>
-                    </Card>
-                    <!-- <MusicBox></MusicBox> -->
+                    <RightSidebar />
                 </div>
             </div>
         </div>
@@ -184,6 +160,7 @@ import { useWaveAnimation } from '@/composables/useWaveAnimation';
 import MusicPlayer from '@/components/MusicPlayer.vue';
 import CommentBox from '@/components/CommentBox.vue';
 import TableOfContents from '@/components/TableOfContents.vue';
+import RightSidebar from '@/components/RightSidebar.vue';
 
 const route = useRoute();
 const themeStore = useThemeStore();

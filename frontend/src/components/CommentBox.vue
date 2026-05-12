@@ -12,7 +12,7 @@
     <div class="comment-input-area">
       <template v-if="userStore.isAuthenticated">
         <div class="input-header">
-          <img v-if="userStore.currentUser?.avatar" :src="userStore.currentUser.avatar" class="input-avatar" />
+          <img v-if="userStore.currentUser?.avatar" :src="'/'+userStore.currentUser.avatar" class="input-avatar" />
           <div v-else class="input-avatar placeholder">
             {{ userStore.currentUser?.username?.charAt(0).toUpperCase() || 'U' }}
           </div>
@@ -44,7 +44,7 @@
     <div v-else class="comment-list">
       <div v-for="comment in comments" :key="comment.id" class="comment-item">
         <div class="comment-main">
-          <img v-if="comment.user.avatar" :src="comment.user.avatar" class="comment-avatar" />
+          <img v-if="comment.user.avatar" :src="'/'+comment.user.avatar" class="comment-avatar" />
           <div v-else class="comment-avatar placeholder">
             {{ comment.user.username.charAt(0).toUpperCase() }}
           </div>
@@ -80,7 +80,7 @@
         <!-- 回复列表 -->
         <div v-if="comment.replies && comment.replies.length > 0" class="replies">
           <div v-for="reply in comment.replies" :key="reply.id" class="reply-item">
-            <img v-if="reply.user.avatar" :src="reply.user.avatar" class="comment-avatar small" />
+            <img v-if="reply.user.avatar" :src="'/'+reply.user.avatar" class="comment-avatar small" />
             <div v-else class="comment-avatar placeholder small">
               {{ reply.user.username.charAt(0).toUpperCase() }}
             </div>

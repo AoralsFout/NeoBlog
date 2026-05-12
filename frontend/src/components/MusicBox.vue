@@ -1,3 +1,4 @@
+<!-- 该文件已废弃，不在任何地方引用 -->
 <template>
     <div class="music-container">
         <div class="music-header">音乐播放器 V3</div>

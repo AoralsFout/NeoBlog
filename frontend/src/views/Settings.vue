@@ -22,8 +22,8 @@
             <div class="title">布局</div>
         </div>
         <div class="content">
-            <Button :type="layout === '3' ? 'primary' : 'outline'" size="sm" @click="layout = '3'">三栏</Button>
-            <Button :type="layout === '2' ? 'primary' : 'outline'" size="sm" @click="layout = '2'">两栏</Button>
+            <Button :type="layout === '3' ? 'primary' : 'outline'" size="sm" @click="changeLayout('3')">三栏</Button>
+            <Button :type="layout === '2' ? 'primary' : 'outline'" size="sm" @click="changeLayout('2')">两栏</Button>
         </div>
     </div>
 </template>

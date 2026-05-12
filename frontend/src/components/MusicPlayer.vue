@@ -111,8 +111,8 @@
                                 <div class="music-control-progress-progress" ref="progressBar"></div>
                                 <div class="music-control-progress-buffered-container">
                                     <div v-for="(range, index) in bufferedRanges" :key="index"
-                                        class="music-control-progress-buffered"
-                                        :style="getBufferedRangeStyle(range)"></div>
+                                        class="music-control-progress-buffered" :style="getBufferedRangeStyle(range)">
+                                    </div>
                                 </div>
                                 <div class="music-control-progress-background"></div>
                             </div>
@@ -408,7 +408,7 @@ const toggleMusicBox = () => {
 
     // 音乐盒平移动画
     if (musicBox.value) {
-        musicBox.value.style.transform = isMusicBoxOpen.value ? 'translateX(800px)' : 'translateX(0px)';
+        musicBox.value.style.transform = isMusicBoxOpen.value ? 'translateX(' + 800 * scale.value + 'px) scale(' + scale.value + ')' : 'translateX(0px) scale(' + scale.value + ')';
     }
     // 音乐盒展开收起按钮图标旋转动画
     if (musicBoxButtonIcon.value) {
@@ -1104,10 +1104,26 @@ const drawAudio = (freData: Uint8Array) => {
     }
 }
 
+const scale = ref<number>(1);
+const updateScale = () => {
+    const width = window.innerWidth
+    scale.value = width / 1000 > 1 ? 1 : width / 1000;
+
+    if (musicBox.value) {
+        musicBox.value.style.transform = !isMusicBoxOpen.value ? 'translateX(' + 800 * scale.value + 'px) scale(' + scale.value + ')' : 'translateX(0px) scale(' + scale.value + ')';
+    }
+}
+
 // 在组件挂载时添加音频事件监听
 onMounted(() => {
     // 初始化播放列表
     loadMusicList()
+
+    // 初始化缩放比例
+    updateScale()
+    // 监听窗口大小变化
+    window.addEventListener('resize', updateScale)
+
     // 添加音频事件监听
     if (audio.value) {
         audio.value.addEventListener('timeupdate', handleTimeUpdate)
@@ -1141,6 +1157,9 @@ const handleVisibilityChange = () => {
 
 // 在组件卸载时移除事件监听
 onUnmounted(() => {
+    // 移除窗口大小监听
+    window.removeEventListener('resize', updateScale)
+
     // 移除音频事件监听
     if (audio.value) {
         audio.value.removeEventListener('timeupdate', handleTimeUpdate)
@@ -1174,6 +1193,7 @@ onUnmounted(() => {
     flex-direction: row;
     bottom: 50px;
     right: 0;
+    transform-origin: right center;
     transform: translateX(800px);
     transition: transform 0.3s ease;
     z-index: 10000;
