@@ -1,6 +1,6 @@
 <template>
     <div class="cardContainer">
-        <div class="card-header">
+        <div v-if="$slots.header" class="card-header">
             <slot name="header"></slot>
         </div>
         <div>
@@ -19,6 +19,7 @@
     background-color: var(--bg-primary);
     border-radius: var(--radius-small);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
 
     transition: background-color 0.2s ease-in-out,border-radius 0.2s ease-in-out;
 
