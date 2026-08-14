@@ -1,5 +1,8 @@
 import { env } from './env';
 
+// 认证Cookie名称（HttpOnly）
+export const AUTH_COOKIE_NAME = 'nb_token';
+
 // JWT配置
 export const jwtConfig = {
   secret: env.jwtSecret,

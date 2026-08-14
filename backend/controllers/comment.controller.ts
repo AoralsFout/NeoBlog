@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import commentService from '../services/comment.service';
 import { extractTokenFromHeader, verifyToken } from '../utils/jwt';
+import { parseCookies } from '../utils/cookie';
+import { AUTH_COOKIE_NAME } from '../config/auth';
 import logger from '../utils/logger';
 
 /**
@@ -21,9 +23,10 @@ export const getComments = async (req: Request, res: Response) => {
     const limitNum = Math.min(50, Math.max(1, parseInt(limit as string, 10) || 10));
     const sortBy = sort === 'hot' ? 'hot' : 'time';
 
-    // 获取当前用户（可选）
+    // 获取当前用户（可选，支持Authorization头与HttpOnly Cookie）
     let currentUserId: number | undefined;
-    const token = extractTokenFromHeader(req.headers.authorization);
+    const token = extractTokenFromHeader(req.headers.authorization)
+      ?? parseCookies(req.headers.cookie)[AUTH_COOKIE_NAME];
     if (token) {
       const payload = verifyToken(token);
       if (payload) {
@@ -54,26 +57,10 @@ export const getComments = async (req: Request, res: Response) => {
 };
 
 /**
- * 创建评论
+ * 创建评论（需通过authenticate中间件）
  */
 export const createComment = async (req: Request, res: Response) => {
   try {
-    const token = extractTokenFromHeader(req.headers.authorization);
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        error: { code: 'UNAUTHORIZED', message: '请先登录' },
-      });
-    }
-
-    const payload = verifyToken(token);
-    if (!payload) {
-      return res.status(401).json({
-        success: false,
-        error: { code: 'INVALID_TOKEN', message: '无效的认证令牌' },
-      });
-    }
-
     const { content, source_id, source_type, parent_id } = req.body;
 
     if (!content || !content.trim()) {
@@ -98,7 +85,7 @@ export const createComment = async (req: Request, res: Response) => {
     }
 
     const comment = await commentService.createComment(
-      payload.userId,
+      req.user!.userId,
       content.trim(),
       source_id as string,
       source_type as string,
@@ -120,26 +107,10 @@ export const createComment = async (req: Request, res: Response) => {
 };
 
 /**
- * 切换点赞/点踩
+ * 切换点赞/点踩（需通过authenticate中间件）
  */
 export const toggleReaction = async (req: Request, res: Response) => {
   try {
-    const token = extractTokenFromHeader(req.headers.authorization);
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        error: { code: 'UNAUTHORIZED', message: '请先登录' },
-      });
-    }
-
-    const payload = verifyToken(token);
-    if (!payload) {
-      return res.status(401).json({
-        success: false,
-        error: { code: 'INVALID_TOKEN', message: '无效的认证令牌' },
-      });
-    }
-
     const commentId = parseInt(String(req.params.id), 10);
     if (isNaN(commentId)) {
       return res.status(400).json({
@@ -156,7 +127,7 @@ export const toggleReaction = async (req: Request, res: Response) => {
       });
     }
 
-    const result = await commentService.toggleReaction(commentId, payload.userId, type);
+    const result = await commentService.toggleReaction(commentId, req.user!.userId, type);
 
     res.json({ success: true, data: result });
   } catch (error) {

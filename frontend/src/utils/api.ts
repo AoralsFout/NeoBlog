@@ -1,27 +1,7 @@
 /**
  * API工具函数
+ * 认证采用 HttpOnly Cookie（由后端在OAuth回调时种下），前端不再持有令牌
  */
-
-/**
- * 获取认证令牌
- */
-function getToken(): string | null {
-  return localStorage.getItem('token');
-}
-
-/**
- * 设置认证令牌
- */
-export function setToken(token: string): void {
-  localStorage.setItem('token', token);
-}
-
-/**
- * 移除认证令牌
- */
-export function removeToken(): void {
-  localStorage.removeItem('token');
-}
 
 /**
  * 获取请求头
@@ -34,11 +14,6 @@ function getHeaders(contentType: string = 'application/json'): HeadersInit {
     headers['Content-Type'] = contentType;
   }
 
-  const token = getToken();
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
   return headers;
 }
 
@@ -48,9 +23,10 @@ function getHeaders(contentType: string = 'application/json'): HeadersInit {
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const error = await response.json().catch(() => ({
-      message: response.statusText,
+      error: { message: response.statusText },
     }));
-    throw new Error(error.message || `请求失败: ${response.status}`);
+    const message = error?.error?.message || error?.message || `请求失败: ${response.status}`;
+    throw new Error(message);
   }
 
   return response.json();
@@ -172,12 +148,9 @@ export const userApi = {
   /**
    * 搜索用户
    */
-  searchUsers: (query: string) => get<{ success: boolean; data: any[] }>(`/api/users/search?q=${encodeURIComponent(query)}`),
+  searchUsers: (query: string) => get<{ success: boolean; data: any[] }>(`/api/users/search?query=${encodeURIComponent(query)}`),
 };
 
-/**
- * 文件上传API
- */
 /**
  * 评论API
  */
@@ -217,8 +190,13 @@ export const articleApi = {
   getTopArticles: (limit: number = 3) =>
     get<{ success: boolean; data: any[] }>(`/api/articles/top`),
 
-  getArticleById: (id: number) =>
-    get<{ success: boolean; data: any }>(`/api/articles/${id}`),
+  /**
+   * 获取文章详情
+   * @param id 文章ID
+   * @param incrementView 是否计入浏览（编辑器加载时为false）
+   */
+  getArticleById: (id: number, incrementView: boolean = true) =>
+    get<{ success: boolean; data: any }>(`/api/articles/${id}${incrementView ? '' : '?view=false'}`),
 
   createArticle: (data: { title: string; content: string; summary?: string; cover_image?: string; tags?: string }) =>
     post<{ success: boolean; data: any }>('/api/articles', data),

@@ -19,22 +19,23 @@ export const getMusicList = async (req: Request, res: Response) => {
       // coverUrl: `/musics/cover/${music.id}.jpg`,
       mainColor: music.mainColor,
       language: music.language,
-      isTranslate: music.isTranslate? 1 : 0, // 前端期望number类型：0或1
+      isTranslate: music.isTranslate ? 1 : 0, // 前端期望number类型：0或1
       format: music.format,
     }));
 
     res.json({
-      code: 200,
-      message: '成功',
+      success: true,
       data: formattedList,
     });
   } catch (error) {
     logger.error('获取音乐列表失败:', error);
 
     res.status(500).json({
-      code: 500,
-      message: '获取音乐列表失败',
-      error: error instanceof Error ? error.message : '未知错误',
+      success: false,
+      error: {
+        code: 'GET_MUSIC_LIST_FAILED',
+        message: '获取音乐列表失败',
+      },
     });
   }
 };

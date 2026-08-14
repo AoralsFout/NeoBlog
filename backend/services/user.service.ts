@@ -103,8 +103,12 @@ class UserService {
       });
 
       return this.mapPrismaUserToUser(user);
-    } catch (error) {
+    } catch (error: any) {
       logger.error('更新用户失败:', error);
+      // 邮箱唯一约束冲突
+      if (error?.code === 'P2002') {
+        throw new Error('该邮箱已被其他用户使用');
+      }
       throw new Error(`更新用户失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
   }

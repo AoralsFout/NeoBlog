@@ -1,4 +1,5 @@
 import axios from 'axios';
+import crypto from 'crypto';
 import { env } from '../config/env';
 import { hashPassword } from '../utils/hash';
 import logger from '../utils/logger';
@@ -60,7 +61,7 @@ class OAuthService {
         redirect_uri: `${env.backendUrl}/api/auth/natayark/callback`,
       };
 
-      logger.info('交换授权码获取令牌:', { code, clientId: env.clientId });
+      logger.info('交换授权码获取令牌', { clientId: env.clientId });
 
       const response = await axios.post<TokenResponse>(env.tokenUrl, data, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -102,13 +103,53 @@ class OAuthService {
   }
 
   /**
-   * 验证state参数（防止CSRF）
-   * @param receivedState 接收到的state
-   * @param originalState 原始state
+   * 生成无状态、可验证的state参数（随机值 + HMAC签名，防止OAuth CSRF）
+   * 不依赖内存/数据库存储，支持多实例部署
+   * @returns state字符串
+   */
+  generateState(): string {
+    const random = crypto.randomBytes(16).toString('base64url');
+    const signature = this.signState(random);
+    return `${random}.${signature}`;
+  }
+
+  /**
+   * 验证state参数是否由本服务签发
+   * @param receivedState 回调中收到的state
    * @returns 是否有效
    */
-  validateState(receivedState: string, originalState: string): boolean {
-    return receivedState === originalState;
+  validateState(receivedState: string): boolean {
+    if (!receivedState || typeof receivedState !== 'string') {
+      return false;
+    }
+
+    const parts = receivedState.split('.');
+    if (parts.length !== 2 || !parts[0] || !parts[1]) {
+      return false;
+    }
+
+    const [random, signature] = parts;
+    const expected = this.signState(random);
+
+    const expectedBuf = Buffer.from(expected);
+    const receivedBuf = Buffer.from(signature);
+    if (expectedBuf.length !== receivedBuf.length) {
+      return false;
+    }
+
+    return crypto.timingSafeEqual(expectedBuf, receivedBuf);
+  }
+
+  /**
+   * 对随机值做HMAC签名
+   * @param random 随机值
+   * @returns 签名
+   */
+  private signState(random: string): string {
+    return crypto
+      .createHmac('sha256', env.jwtSecret)
+      .update(random)
+      .digest('base64url');
   }
 
   /**

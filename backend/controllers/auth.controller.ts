@@ -1,35 +1,28 @@
 import { Request, Response } from 'express';
 import { authService, oauthService } from '../services';
-import { generateState } from '../utils/hash';
-import { extractTokenFromHeader, verifyToken } from '../utils/jwt';
 import logger from '../utils/logger';
 import { env } from '../config/env';
+import { AUTH_COOKIE_NAME } from '../config/auth';
 
-// 存储临时的state
-const stateStore = new Map<string, { state: string; timestamp: number }>();
-
-// 清理过期的state（每5分钟清理一次）
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, value] of stateStore.entries()) {
-    if (now - value.timestamp > 10 * 60 * 1000) { // 10分钟过期
-      stateStore.delete(key);
-    }
-  }
-}, 5 * 60 * 1000);
+// 认证Cookie配置
+const authCookieOptions = {
+  httpOnly: true,
+  secure: env.nodeEnv === 'production',
+  sameSite: 'lax' as const,
+  path: '/',
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7天
+};
 
 /**
  * 重定向到Natayark OAuth授权页面
  */
 export const redirectToOAuth = (req: Request, res: Response) => {
   try {
-    const state = generateState();
+    // 生成无状态state（HMAC签名，无需存储）
+    const state = oauthService.generateState();
     const authorizationUrl = oauthService.getAuthorizationUrl(state);
 
-    // 存储state
-    stateStore.set(state, { state, timestamp: Date.now() });
-
-    logger.info('重定向到OAuth授权页面:' + authorizationUrl, { state });
+    logger.info('重定向到OAuth授权页面');
 
     res.redirect(authorizationUrl);
   } catch (error) {
@@ -61,9 +54,8 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
       });
     }
 
-    // 验证state
-    const storedState = stateStore.get(state);
-    if (!storedState) {
+    // 验证state（HMAC签名校验，防CSRF）
+    if (!oauthService.validateState(state)) {
       return res.status(400).json({
         success: false,
         error: {
@@ -73,20 +65,17 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
       });
     }
 
-    // 使用后删除state
-    stateStore.delete(state);
-
     // 处理OAuth回调
-    const { user, token } = await authService.handleOAuthCallback(code, state, storedState.state);
+    const { user, token } = await authService.handleOAuthCallback(code, state);
 
     logger.info('OAuth回调处理成功:', { userId: user.id });
 
-    // 重定向到前端，携带令牌
-    const redirectUrl = new URL(env.frontendUrl + '/auth/callback');
-    redirectUrl.searchParams.set('token', token);
-    redirectUrl.searchParams.set('user_id', user.id.toString());
+    // 将令牌写入HttpOnly Cookie（不经过URL，避免泄露到日志/历史/Referer）
+    res.cookie(AUTH_COOKIE_NAME, token, authCookieOptions);
 
-    res.redirect(redirectUrl.toString());
+    // 重定向到前端回调页
+    const frontendBase = env.frontendUrl.replace(/\/$/, '');
+    res.redirect(`${frontendBase}/auth/callback`);
   } catch (error) {
     logger.error('OAuth回调处理失败:', error);
     res.status(500).json({
@@ -100,36 +89,12 @@ export const handleOAuthCallback = async (req: Request, res: Response) => {
 };
 
 /**
- * 获取当前用户信息
+ * 获取当前用户信息（需通过authenticate中间件）
  */
 export const getCurrentUser = async (req: Request, res: Response) => {
   try {
-    // 从请求头提取令牌
-    const token = extractTokenFromHeader(req.headers.authorization);
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: '未提供认证令牌',
-        },
-      });
-    }
-
-    // 验证令牌
-    const payload = verifyToken(token);
-    if (!payload) {
-      return res.status(401).json({
-        success: false,
-        error: {
-          code: 'INVALID_TOKEN',
-          message: '无效的认证令牌',
-        },
-      });
-    }
-
     // 获取用户信息
-    const user = await authService.getUserProfile(payload.userId);
+    const user = await authService.getUserProfile(req.user!.userId);
 
     res.json({
       success: true,
@@ -148,35 +113,24 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 };
 
 /**
- * 用户登出
+ * 用户登出（需通过authenticate中间件）
  */
 export const logout = async (req: Request, res: Response) => {
   try {
-    // 从请求头提取令牌
-    const token = extractTokenFromHeader(req.headers.authorization);
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: '未提供认证令牌',
-        },
-      });
-    }
+    const userId = req.user!.userId;
 
-    // 验证令牌
-    const payload = verifyToken(token);
-    if (!payload) {
-      return res.status(401).json({
-        success: false,
-        error: {
-          code: 'INVALID_TOKEN',
-          message: '无效的认证令牌',
-        },
-      });
-    }
+    // 撤销该用户所有已签发令牌（token_version +1）
+    await authService.revokeUserToken(userId);
 
-    logger.info('用户登出:', { userId: payload.userId });
+    // 清除认证Cookie
+    res.clearCookie(AUTH_COOKIE_NAME, {
+      httpOnly: true,
+      secure: env.nodeEnv === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
+
+    logger.info('用户登出:', { userId });
 
     res.json({
       success: true,

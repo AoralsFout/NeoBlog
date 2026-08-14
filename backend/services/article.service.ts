@@ -1,6 +1,20 @@
 import prisma from '../config/database';
+import { Prisma } from '@prisma/client';
 import logger from '../utils/logger';
 import type { Article, PaginatedArticles } from '../types/article';
+
+// 列表查询用到的文章字段（不含正文，减小响应体积）
+const LIST_FIELDS = {
+  id: true,
+  title: true,
+  summary: true,
+  cover_image: true,
+  tags: true,
+  views: true,
+  author_id: true,
+  created_at: true,
+  updated_at: true,
+};
 
 class ArticleService {
   async getArticles(
@@ -24,6 +38,7 @@ class ArticleService {
       const [articles, total] = await Promise.all([
         prisma.article.findMany({
           where,
+          select: LIST_FIELDS,
           skip,
           take: limit,
           orderBy: { created_at: 'desc' },
@@ -54,25 +69,28 @@ class ArticleService {
     skip: number,
     tag?: string
   ): Promise<PaginatedArticles> {
-    let tagFilter = '';
-    if (tag) {
-      tagFilter = `WHERE a.tags LIKE '%${tag}%'`;
-    }
+    // 使用参数化查询，防止SQL注入；LIMIT/OFFSET为数字，由Prisma安全内联
+    const tagFilter = tag
+      ? Prisma.sql`WHERE a.tags LIKE ${`%${tag}%`}`
+      : Prisma.empty;
 
-    const countResult = await prisma.$queryRawUnsafe<{ total: bigint }[]>(
-      `SELECT COUNT(*) as total FROM articles a ${tagFilter}`
-    );
-    const total = Number(countResult[0].total);
+    const countResult = await prisma.$queryRaw<{ total: bigint }[]>`
+      SELECT COUNT(*) as total FROM articles a ${tagFilter}
+    `;
+    const total = Number(countResult[0]?.total ?? 0);
 
-    const articles = await prisma.$queryRawUnsafe<any[]>(
-      `SELECT a.*, COUNT(c.id) as comment_count, (a.views + COUNT(c.id)) as hot_score
-       FROM articles a
-       LEFT JOIN comments c ON c.source_id = CAST(a.id AS CHAR) AND c.source_type = 'article'
-       ${tagFilter}
-       GROUP BY a.id
-       ORDER BY hot_score DESC
-       LIMIT ${limit} OFFSET ${skip}`
-    );
+    const articles = await prisma.$queryRaw<any[]>`
+      SELECT a.id, a.title, a.summary, a.cover_image, a.tags, a.views, a.author_id,
+             a.created_at, a.updated_at,
+             COUNT(c.id) as comment_count, (a.views + COUNT(c.id)) as hot_score
+      FROM articles a
+      LEFT JOIN comments c ON c.source_id = CAST(a.id AS CHAR) COLLATE utf8mb4_unicode_ci
+        AND c.source_type = 'article'
+      ${tagFilter}
+      GROUP BY a.id
+      ORDER BY hot_score DESC
+      LIMIT ${limit} OFFSET ${skip}
+    `;
 
     const articlesWithAuthors = await this.enrichAuthors(articles);
 
@@ -87,15 +105,18 @@ class ArticleService {
     };
   }
 
-  async getArticleById(id: number): Promise<Article | null> {
+  async getArticleById(id: number, incrementView: boolean = true): Promise<Article | null> {
     try {
       const article = await prisma.article.findUnique({ where: { id } });
       if (!article) return null;
 
-      await prisma.article.update({
-        where: { id },
-        data: { views: { increment: 1 } },
-      });
+      // 浏览计数：编辑器等场景可传入 false 跳过
+      if (incrementView) {
+        await prisma.article.update({
+          where: { id },
+          data: { views: { increment: 1 } },
+        });
+      }
 
       const commentCount = await prisma.comment.count({
         where: { source_id: String(id), source_type: 'article' },
@@ -108,7 +129,7 @@ class ArticleService {
 
       return {
         ...article,
-        views: article.views + 1,
+        views: incrementView ? article.views + 1 : article.views,
         comment_count: commentCount,
         author: author || undefined,
         created_at: article.created_at.toISOString(),
@@ -122,14 +143,17 @@ class ArticleService {
 
   async getTopArticles(limit: number = 3): Promise<Article[]> {
     try {
-      const articles = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT a.*, COUNT(c.id) as comment_count, (a.views + COUNT(c.id)) as hot_score
-         FROM articles a
-         LEFT JOIN comments c ON c.source_id = CAST(a.id AS CHAR) AND c.source_type = 'article'
-         GROUP BY a.id
-         ORDER BY hot_score DESC
-         LIMIT ${limit}`
-      );
+      const articles = await prisma.$queryRaw<any[]>`
+        SELECT a.id, a.title, a.summary, a.cover_image, a.tags, a.views, a.author_id,
+               a.created_at, a.updated_at,
+               COUNT(c.id) as comment_count, (a.views + COUNT(c.id)) as hot_score
+        FROM articles a
+        LEFT JOIN comments c ON c.source_id = CAST(a.id AS CHAR) COLLATE utf8mb4_unicode_ci
+          AND c.source_type = 'article'
+        GROUP BY a.id
+        ORDER BY hot_score DESC
+        LIMIT ${limit}
+      `;
 
       return this.enrichAuthors(articles);
     } catch (error) {
@@ -220,7 +244,14 @@ class ArticleService {
       const existing = await prisma.article.findUnique({ where: { id } });
       if (!existing) return false;
 
-      await prisma.article.delete({ where: { id } });
+      // 在事务中先清理关联评论（source_id为字符串，无外键级联），再删除文章
+      await prisma.$transaction([
+        prisma.comment.deleteMany({
+          where: { source_id: String(id), source_type: 'article' },
+        }),
+        prisma.article.delete({ where: { id } }),
+      ]);
+
       return true;
     } catch (error) {
       logger.error(`删除文章失败 (ID: ${id}):`, error);
@@ -241,7 +272,7 @@ class ArticleService {
     return articles.map((a) => ({
       id: a.id,
       title: a.title,
-      content: a.content,
+      ...(a.content !== undefined && { content: a.content }),
       summary: a.summary,
       cover_image: a.cover_image,
       tags: a.tags,

@@ -8,16 +8,17 @@ datasource db {
 }
 
 model User {
-  id          Int      @id @default(autoincrement())
-  natayark_id Int      @unique
-  username    String
-  email       String   @unique
-  avatar      String?
-  role        Role     @default(MEMBER)
-  status      Status   @default(NORMAL)
-  last_login  DateTime?
-  created_at  DateTime @default(now()) @map("created_at")
-  updated_at  DateTime @updatedAt @map("updated_at")
+  id            Int      @id @default(autoincrement())
+  natayark_id   Int      @unique
+  username      String
+  email         String   @unique
+  avatar        String?
+  role          Role     @default(MEMBER)
+  status        Status   @default(NORMAL)
+  token_version Int      @default(0) @map("token_version")
+  last_login    DateTime?
+  created_at    DateTime @default(now()) @map("created_at")
+  updated_at    DateTime @updatedAt @map("updated_at")
 
   comments         Comment[]
   commentReactions CommentReaction[]

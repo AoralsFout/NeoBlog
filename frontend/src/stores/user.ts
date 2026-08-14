@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import type { User } from "@/types/user";
-import { authApi, userApi, uploadApi, setToken, removeToken } from "@/utils/api";
+import { authApi, userApi, uploadApi } from "@/utils/api";
 
 export const useUserStore = defineStore("user", () => {
   // 当前用户信息
@@ -23,21 +23,30 @@ export const useUserStore = defineStore("user", () => {
     return currentUser.value?.role === "admin";
   });
 
+  // 初始化去重：并发调用只发一次请求
+  let initPromise: Promise<void> | null = null;
+
   /**
-   * 初始化用户状态（从本地存储恢复）
+   * 初始化用户状态（通过HttpOnly Cookie向服务端获取）
+   * 页面刷新后由各组件/路由守卫调用，重复调用会被去重
    */
-  const initUser = async () => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      try {
-        await fetchCurrentUser();
-      } catch (err) {
-        // 令牌无效，清除本地存储
-        console.error("令牌无效:", err);
-        localStorage.removeItem("token");
-        currentUser.value = null;
-      }
+  const initUser = (): Promise<void> => {
+    if (currentUser.value) {
+      return Promise.resolve();
     }
+    if (!initPromise) {
+      initPromise = (async () => {
+        try {
+          await fetchCurrentUser();
+        } catch {
+          // 未登录或令牌无效：静默保持未登录状态
+          currentUser.value = null;
+        } finally {
+          initPromise = null;
+        }
+      })();
+    }
+    return initPromise;
   };
 
   /**
@@ -64,29 +73,21 @@ export const useUserStore = defineStore("user", () => {
   };
 
   /**
-   * 用户登录（通过OAuth重定向）
+   * 用户登录（通过OAuth重定向，令牌由后端写入HttpOnly Cookie）
    */
   const login = () => {
     authApi.redirectToOAuth();
   };
 
   /**
-   * 处理OAuth回调
-   * @param token 认证令牌
-   * @param userId 用户ID
+   * 处理OAuth回调（Cookie已由后端种下，直接拉取用户信息）
    */
-  const handleOAuthCallback = async (token: string, userId: string) => {
+  const handleOAuthCallback = async (): Promise<boolean> => {
     try {
-      // 存储令牌
-      setToken(token);
-
-      // 获取用户信息
       await fetchCurrentUser();
-
       return true;
     } catch (err) {
       console.error("OAuth回调处理失败:", err);
-      removeToken();
       currentUser.value = null;
       return false;
     }
@@ -100,13 +101,12 @@ export const useUserStore = defineStore("user", () => {
     error.value = null;
 
     try {
+      // 后端清除HttpOnly Cookie并撤销令牌
       await authApi.logout();
     } catch (err) {
       console.error("登出请求失败:", err);
       // 即使API请求失败，也清除本地状态
     } finally {
-      // 清除本地存储和状态
-      removeToken();
       currentUser.value = null;
       isLoading.value = false;
     }
@@ -124,8 +124,16 @@ export const useUserStore = defineStore("user", () => {
         throw new Error("用户未登录");
       }
 
+      // 过滤空字符串字段（后端校验规则会拒绝空头像URL等）
+      const payload: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(userData)) {
+        if (value !== '' && value !== undefined && value !== null) {
+          payload[key] = value;
+        }
+      }
+
       // 调用更新用户API
-      const response = await userApi.updateUser(currentUser.value.id, userData);
+      const response = await userApi.updateUser(currentUser.value.id, payload);
 
       if (response.success && response.data) {
         // 更新本地用户状态

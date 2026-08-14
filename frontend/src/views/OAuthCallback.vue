@@ -40,10 +40,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/user';
 
-const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
 
@@ -53,16 +52,8 @@ const errorMessage = ref('');
 
 onMounted(async () => {
   try {
-    // 从URL参数获取token和user_id
-    const token = route.query.token as string;
-    const userId = route.query.user_id as string;
-
-    if (!token || !userId) {
-      throw new Error('缺少必要的认证参数');
-    }
-
-    // 处理OAuth回调
-    const success = await userStore.handleOAuthCallback(token, userId);
+    // 认证Cookie已由后端在OAuth回调时种下，直接拉取用户信息
+    const success = await userStore.handleOAuthCallback();
 
     if (success) {
       isSuccess.value = true;

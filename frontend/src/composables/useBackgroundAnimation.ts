@@ -49,6 +49,8 @@ export function useBackgroundAnimation(wallpapersRef: Ref<HTMLDivElement | null>
             // 生成带时间戳的新URL避免缓存
             const newUrl = `https://t.alcy.cc/pc/?t=${Date.now()}`
             const img = new Image()
+            let retryCount = 0
+            const maxRetries = 3
 
             img.onload = () => {
                 if (images.value[nextIndex.value]) {
@@ -58,8 +60,15 @@ export function useBackgroundAnimation(wallpapersRef: Ref<HTMLDivElement | null>
             }
 
             img.onerror = () => {
-                // 失败时重试
-                setTimeout(() => preloadNextImage(), 1000)
+                // 失败时有限次重试，避免第三方服务不可用时无限循环
+                if (retryCount < maxRetries) {
+                    retryCount++
+                    setTimeout(() => {
+                        img.src = `${newUrl}&retry=${retryCount}`
+                    }, 2000)
+                } else {
+                    resolve()
+                }
             }
 
             img.src = newUrl

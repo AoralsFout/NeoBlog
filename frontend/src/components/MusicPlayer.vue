@@ -208,8 +208,7 @@
                                             <g id="SVGRepo_iconCarrier">
                                                 <path
                                                     d="M18 4L21 7M21 7L18 10M21 7H7C4.79086 7 3 8.79086 3 11M6 20L3 17M3 17L6 14M3 17H17C19.2091 17 21 15.2091 21 13"
-                                                    :stroke="playMode === 'order' ? '#ffffff' : '#000000'"
-                                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 </path>
                                             </g>
                                         </svg>
@@ -227,8 +226,7 @@
                                             <g id="SVGRepo_iconCarrier">
                                                 <path
                                                     d="M14 7H15.9992C19.3129 7 21.9992 9.68629 21.9992 13C21.9992 16.3137 19.3129 19 15.9992 19H8C4.68629 19 2 16.3137 2 13C2 9.68629 4.68629 7 8 7H10M7 4L10 7M10 7L7 10"
-                                                    :stroke="playMode === 'loop' ? '#ffffff' : '#000000'"
-                                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 </path>
                                             </g>
                                         </svg>
@@ -246,8 +244,7 @@
                                             <g id="SVGRepo_iconCarrier">
                                                 <path
                                                     d="M18 4L21 7M21 7L18 10M21 7H17C16.0707 7 15.606 7 15.2196 7.07686C13.6329 7.39249 12.3925 8.63288 12.0769 10.2196C12 10.606 12 11.0707 12 12C12 12.9293 12 13.394 11.9231 13.7804C11.6075 15.3671 10.3671 16.6075 8.78036 16.9231C8.39397 17 7.92931 17 7 17H3M18 20L21 17M21 17L18 14M21 17H17C16.0707 17 15.606 17 15.2196 16.9231C15.1457 16.9084 15.0724 16.8917 15 16.873M3 7H7C7.92931 7 8.39397 7 8.78036 7.07686C8.85435 7.09158 8.92758 7.1083 9 7.12698"
-                                                    :stroke="playMode === 'random' ? '#ffffff' : '#000000'"
-                                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 </path>
                                             </g>
                                         </svg>
@@ -265,13 +262,11 @@
                                             <g id="SVGRepo_iconCarrier">
                                                 <path
                                                     d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
-                                                    :stroke="playMode === 'stop' ? '#ffffff' : '#000000'"
-                                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 </path>
                                                 <path
                                                     d="M9 10.6C9 10.0399 9 9.75992 9.10899 9.54601C9.20487 9.35785 9.35785 9.20487 9.54601 9.10899C9.75992 9 10.0399 9 10.6 9H13.4C13.9601 9 14.2401 9 14.454 9.10899C14.6422 9.20487 14.7951 9.35785 14.891 9.54601C15 9.75992 15 10.0399 15 10.6V13.4C15 13.9601 15 14.2401 14.891 14.454C14.7951 14.6422 14.6422 14.7951 14.454 14.891C14.2401 15 13.9601 15 13.4 15H10.6C10.0399 15 9.75992 15 9.54601 14.891C9.35785 14.7951 9.20487 14.6422 9.10899 14.454C9 14.2401 9 13.9601 9 13.4V10.6Z"
-                                                    :stroke="playMode === 'stop' ? '#ffffff' : '#000000'"
-                                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 </path>
                                             </g>
                                         </svg>
@@ -463,7 +458,7 @@ const loadMusicList = async () => {
         const response = await fetch(`/api/music/getMusicList`)
         const data = await response.json()
 
-        if (data.code !== 200) {
+        if (!data.success) {
             throw new Error('获取音乐列表失败')
         }
 
@@ -565,7 +560,8 @@ const audio = ref<HTMLAudioElement | null>(null)
 const loadMusic = () => {
     if (!audio.value || !currentMusic.value) return
     audio.value.src = '/musics/music/' + currentMusic.value.id + '.' + currentMusic.value.format;
-    audio.value.play();
+    // 浏览器自动播放策略可能拒绝play()，忽略该错误（用户点击播放按钮时才真正开始）
+    audio.value.play().catch(() => {});
     audio.value.volume = volume.value;
 };
 
@@ -581,7 +577,10 @@ const switchMusic = (index: number) => {
         applyColor();
         loadMusic();
     });
-    saveMusicState();
+    // 恢复缓存进度期间不保存状态，避免覆盖缓存中的播放时间
+    if (resumeTime.value === null) {
+        saveMusicState();
+    }
 }
 
 // 播放&暂停音乐
@@ -595,14 +594,20 @@ const playPauseMusic = () => {
     saveMusicState();
 }
 
-// 切换下一首音乐
+// 切换下一首音乐（按列表中的实际索引计算）
 const nextMusic = () => {
-    switchMusic((currentMusic.value.id) % musicList.value.length);
+    if (musicList.value.length === 0) return;
+    const index = musicList.value.findIndex((m) => m.id === currentMusic.value.id);
+    const nextIndex = index === -1 ? 0 : (index + 1) % musicList.value.length;
+    switchMusic(nextIndex);
 }
 
-// 切换上一首音乐
+// 切换上一首音乐（按列表中的实际索引计算）
 const prevMusic = () => {
-    switchMusic((currentMusic.value.id + musicList.value.length - 2) % musicList.value.length);
+    if (musicList.value.length === 0) return;
+    const index = musicList.value.findIndex((m) => m.id === currentMusic.value.id);
+    const prevIndex = index === -1 ? musicList.value.length - 1 : (index - 1 + musicList.value.length) % musicList.value.length;
+    switchMusic(prevIndex);
 }
 
 /**
@@ -1027,6 +1032,20 @@ let source: MediaElementAudioSourceNode | null = null;
 analyser.connect(audioCtx.destination);
 analyser.fftSize = 512;
 
+let audioAnimationFrameId: number | null = null;
+
+const stopAudioAnimation = () => {
+    if (audioAnimationFrameId !== null) {
+        cancelAnimationFrame(audioAnimationFrameId);
+        audioAnimationFrameId = null;
+    }
+};
+
+const startAudioAnimation = () => {
+    if (audioAnimationFrameId !== null) return;
+    AudioAnimation();
+};
+
 const AudioAnimation = () => {
     // 获取频率数据
     const bufferLength = analyser.frequencyBinCount;
@@ -1055,7 +1074,7 @@ const AudioAnimation = () => {
     // 绘制音频频谱
     drawAudio(freData)
 
-    requestAnimationFrame(AudioAnimation);
+    audioAnimationFrameId = requestAnimationFrame(AudioAnimation);
 }
 
 const drawAudio = (freData: Uint8Array) => {
@@ -1129,12 +1148,14 @@ onMounted(() => {
         audio.value.addEventListener('timeupdate', handleTimeUpdate)
         audio.value.addEventListener('loadedmetadata', handleLoadedMetadata)
         audio.value.addEventListener('ended', handleAudioEnded)
+        // 播放/暂停时控制频谱动画循环，避免暂停时持续消耗CPU
+        audio.value.addEventListener('play', startAudioAnimation)
+        audio.value.addEventListener('pause', stopAudioAnimation)
     }
-    // 初始化音频分析器
+    // 初始化音频分析器（频谱动画仅在播放时运行）
     if (audio.value) {
         source = audioCtx.createMediaElementSource(audio.value);
         source.connect(analyser);
-        AudioAnimation();
     }
     // 添加歌词容器滚动事件监听
     nextTick(() => {
@@ -1157,6 +1178,12 @@ const handleVisibilityChange = () => {
 
 // 在组件卸载时移除事件监听
 onUnmounted(() => {
+    // 停止频谱动画循环并暂停音频
+    stopAudioAnimation();
+    if (audio.value) {
+        audio.value.pause();
+    }
+
     // 移除窗口大小监听
     window.removeEventListener('resize', updateScale)
 
@@ -1165,6 +1192,8 @@ onUnmounted(() => {
         audio.value.removeEventListener('timeupdate', handleTimeUpdate)
         audio.value.removeEventListener('loadedmetadata', handleLoadedMetadata)
         audio.value.removeEventListener('ended', handleAudioEnded)
+        audio.value.removeEventListener('play', startAudioAnimation)
+        audio.value.removeEventListener('pause', stopAudioAnimation)
     }
     // 移除歌词容器滚动事件监听
     if (lyricsContainer.value) {
@@ -1515,7 +1544,7 @@ onUnmounted(() => {
     transform: translateX(50%);
     width: 100px;
     padding: 10px 0;
-    background-color: #eee;
+    background-color: var(--bg-primary);
     border-radius: var(--radius-medium);
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
     z-index: 5;
@@ -1534,7 +1563,7 @@ onUnmounted(() => {
     height: 0;
     border-left: 10px solid transparent;
     border-right: 10px solid transparent;
-    border-top: 15px solid #eee;
+    border-top: 15px solid var(--bg-primary);
 }
 
 .music-control-item-menu-item {
@@ -1548,10 +1577,11 @@ onUnmounted(() => {
     font-weight: normal;
     text-align: center;
     cursor: pointer;
+    color: var(--text-primary);
 }
 
 .music-control-item-menu-item:hover {
-    background-color: #f5f5f5;
+    background-color: var(--bg-secondary);
 }
 
 .music-control-item-menu-item.active {
@@ -1596,6 +1626,7 @@ onUnmounted(() => {
 
 .volume-slider {
     -webkit-appearance: slider-vertical;
+    appearance: slider-vertical;
     width: 15px;
     height: 90px;
     background-color: var(--bg-primary);
@@ -1603,6 +1634,16 @@ onUnmounted(() => {
     border-radius: var(--radius-small);
 
     transition: border-radius 0.2s ease-in-out;
+}
+
+/* Firefox：appearance: slider-vertical 不被支持，使用writing-mode实现垂直滑块 */
+@supports (-moz-appearance: none) {
+    .volume-slider {
+        -webkit-appearance: auto;
+        appearance: auto;
+        writing-mode: vertical-lr;
+        direction: rtl;
+    }
 }
 
 .music-list-box {

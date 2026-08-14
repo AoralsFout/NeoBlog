@@ -129,7 +129,7 @@ class CommentService {
   }
 
   /**
-   * 切换点赞/点踩
+   * 切换点赞/点踩（事务内完成，避免并发竞态）
    */
   async toggleReaction(
     commentId: number,
@@ -137,94 +137,81 @@ class CommentService {
     type: Reaction
   ): Promise<{ likes_count: number; dislikes_count: number; user_reaction: Reaction | null }> {
     try {
-      const comment = await prisma.comment.findUnique({
-        where: { id: commentId },
-        select: { id: true },
-      });
+      const result = await prisma.$transaction(async (tx) => {
+        const comment = await tx.comment.findUnique({
+          where: { id: commentId },
+          select: { id: true },
+        });
 
-      if (!comment) {
-        throw new Error('评论不存在');
-      }
-
-      // 检查已有的 reaction
-      const existing = await prisma.commentReaction.findUnique({
-        where: {
-          comment_id_user_id: {
-            comment_id: commentId,
-            user_id: userId,
-          },
-        },
-      });
-
-      if (existing) {
-        if (existing.type === type.toUpperCase()) {
-          // 相同操作 -> 取消
-          await prisma.commentReaction.delete({
-            where: { id: existing.id },
-          });
-
-          await this.updateReactionCounts(commentId);
-        } else {
-          // 切换类型
-          await prisma.commentReaction.update({
-            where: { id: existing.id },
-            data: { type: type.toUpperCase() as any },
-          });
-
-          await this.updateReactionCounts(commentId);
+        if (!comment) {
+          throw new Error('评论不存在');
         }
-      } else {
-        // 新增
-        await prisma.commentReaction.create({
-          data: {
-            comment_id: commentId,
-            user_id: userId,
-            type: type.toUpperCase() as any,
+
+        // 检查已有的 reaction
+        const existing = await tx.commentReaction.findUnique({
+          where: {
+            comment_id_user_id: {
+              comment_id: commentId,
+              user_id: userId,
+            },
           },
         });
 
-        await this.updateReactionCounts(commentId);
-      }
+        if (existing && existing.type === type.toUpperCase()) {
+          // 相同操作 -> 取消
+          await tx.commentReaction.delete({ where: { id: existing.id } });
+        } else {
+          // 新增或切换类型（upsert保证并发安全）
+          await tx.commentReaction.upsert({
+            where: {
+              comment_id_user_id: {
+                comment_id: commentId,
+                user_id: userId,
+              },
+            },
+            create: {
+              comment_id: commentId,
+              user_id: userId,
+              type: type.toUpperCase() as any,
+            },
+            update: {
+              type: type.toUpperCase() as any,
+            },
+          });
+        }
 
-      // 返回最新状态
-      const updated = await prisma.comment.findUnique({
-        where: { id: commentId },
-        select: { likes_count: true, dislikes_count: true },
+        // 重新统计并更新计数
+        const [likes, dislikes] = await Promise.all([
+          tx.commentReaction.count({
+            where: { comment_id: commentId, type: 'LIKE' },
+          }),
+          tx.commentReaction.count({
+            where: { comment_id: commentId, type: 'DISLIKE' },
+          }),
+        ]);
+
+        await tx.comment.update({
+          where: { id: commentId },
+          data: { likes_count: likes, dislikes_count: dislikes },
+        });
+
+        const userReaction = await tx.commentReaction.findUnique({
+          where: { comment_id_user_id: { comment_id: commentId, user_id: userId } },
+          select: { type: true },
+        });
+
+        return {
+          likes_count: likes,
+          dislikes_count: dislikes,
+          user_reaction: userReaction ? (userReaction.type.toLowerCase() as Reaction) : null,
+        };
       });
 
-      const userReaction = await prisma.commentReaction.findUnique({
-        where: { comment_id_user_id: { comment_id: commentId, user_id: userId } },
-        select: { type: true },
-      });
-
-      return {
-        likes_count: updated!.likes_count,
-        dislikes_count: updated!.dislikes_count,
-        user_reaction: userReaction ? (userReaction.type.toLowerCase() as Reaction) : null,
-      };
+      return result;
     } catch (error) {
       logger.error('操作评论反应失败:', error);
       throw error instanceof Error ? error : new Error('操作评论反应失败');
     }
-  }
-
-  /**
-   * 更新评论的点赞/点踩计数
-   */
-  private async updateReactionCounts(commentId: number): Promise<void> {
-    const [likes, dislikes] = await Promise.all([
-      prisma.commentReaction.count({
-        where: { comment_id: commentId, type: 'LIKE' },
-      }),
-      prisma.commentReaction.count({
-        where: { comment_id: commentId, type: 'DISLIKE' },
-      }),
-    ]);
-
-    await prisma.comment.update({
-      where: { id: commentId },
-      data: { likes_count: likes, dislikes_count: dislikes },
-    });
   }
 
   /**

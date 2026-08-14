@@ -31,7 +31,34 @@ export default defineConfig(({ mode }) => {
       __GIT_DATE__: JSON.stringify(gitDate),
     },
     plugins: [
-      vue()
+      vue(),
+      {
+        // 仅生产构建注入CSP（开发环境需内联脚本/WebSocket，不注入）
+        name: 'inject-csp',
+        apply: 'build',
+        transformIndexHtml() {
+          const csp = [
+            "default-src 'self'",
+            "script-src 'self'",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data: https:",
+            "font-src 'self' data:",
+            "media-src 'self'",
+            "connect-src 'self'",
+            "object-src 'none'",
+            "base-uri 'self'",
+            "form-action 'self'",
+            "frame-ancestors 'none'",
+          ].join('; ')
+          return [
+            {
+              tag: 'meta',
+              attrs: { 'http-equiv': 'Content-Security-Policy', content: csp },
+              injectTo: 'head-prepend',
+            },
+          ]
+        },
+      },
     ],
     resolve: {
       alias: {

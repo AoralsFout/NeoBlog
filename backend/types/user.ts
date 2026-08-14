@@ -1,5 +1,5 @@
 export type Role = "admin" | "member";
-export type Status = "normal" | "banned" | "forzen";
+export type Status = "normal" | "banned" | "frozen";
 
 export interface User {
     id: number,

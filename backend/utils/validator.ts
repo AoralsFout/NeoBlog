@@ -39,7 +39,8 @@ export const loginValidationRules = [
 export const userUpdateValidationRules = [
   body('username').optional().notEmpty().withMessage('用户名不能为空'),
   body('email').optional().isEmail().withMessage('邮箱格式不正确'),
-  body('avatar').optional().isURL().withMessage('头像必须是有效的URL'),
+  body('avatar').optional({ values: 'falsy' }).isURL({ require_protocol: true })
+    .withMessage('头像必须是有效的URL'),
 ];
 
 /**

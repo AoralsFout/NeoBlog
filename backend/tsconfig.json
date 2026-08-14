@@ -9,6 +9,6 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*", "config/**/*", "controllers/**/*", "services/**/*", "utils/**/*", "types/**/*"],
+  "include": ["src/**/*", "config/**/*", "controllers/**/*", "middleware/**/*", "services/**/*", "utils/**/*", "types/**/*"],
   "exclude": ["node_modules"]
 }

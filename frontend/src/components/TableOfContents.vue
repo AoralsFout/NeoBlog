@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import Card from './Card.vue';
 
 export interface TocHeading {
@@ -42,7 +42,14 @@ function scrollTo(id: string) {
   }
 }
 
-onMounted(() => {
+// 建立/重建观察器（文章切换时headings会变化）
+async function setupObserver() {
+  observer?.disconnect();
+  observer = null;
+  activeId.value = '';
+
+  await nextTick();
+
   const headingElements = props.headings
     .map((h) => document.getElementById(h.id))
     .filter(Boolean) as HTMLElement[];
@@ -62,7 +69,19 @@ onMounted(() => {
   );
 
   headingElements.forEach((el) => observer!.observe(el));
+}
+
+onMounted(() => {
+  setupObserver();
 });
+
+// 文章切换（路由参数变化导致headings更新）时重建观察器
+watch(
+  () => props.headings,
+  () => {
+    setupObserver();
+  }
+);
 
 onBeforeUnmount(() => {
   observer?.disconnect();

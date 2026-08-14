@@ -1,7 +1,8 @@
 export interface Article {
   id: number;
   title: string;
-  content: string;
+  /** 列表接口可能不返回正文，故为可选 */
+  content?: string;
   summary: string | null;
   cover_image: string | null;
   tags: string | null;

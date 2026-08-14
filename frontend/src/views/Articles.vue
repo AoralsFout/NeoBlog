@@ -38,7 +38,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { articleApi } from '@/utils/api';
 import { useUserStore } from '@/stores/user';
@@ -53,14 +53,11 @@ const router = useRouter();
 const userStore = useUserStore();
 
 const articles = ref<Article[]>([]);
-const topArticles = ref<Article[]>([]);
 const pagination = ref<PaginationType>({ page: 1, limit: 5, total: 0, total_pages: 0 });
 const loading = ref(true);
 const error = ref('');
 const sort = ref<'time' | 'hot'>('time');
 const page = ref(1);
-
-const showFeatured = computed(() => page.value === 1 && sort.value === 'hot');
 
 function changeSort(newSort: 'time' | 'hot') {
   sort.value = newSort;
@@ -80,16 +77,10 @@ async function loadArticles() {
   loading.value = true;
   error.value = '';
   try {
-    const [listRes, topRes] = await Promise.all([
-      articleApi.getArticles({ page: page.value, limit: 5, sort: sort.value }),
-      articleApi.getTopArticles(3),
-    ]);
+    const listRes = await articleApi.getArticles({ page: page.value, limit: 5, sort: sort.value });
     if (listRes.success) {
       articles.value = listRes.articles;
       pagination.value = listRes.pagination;
-    }
-    if (topRes.success) {
-      topArticles.value = topRes.data;
     }
   } catch (e: any) {
     error.value = e.message || '加载失败';

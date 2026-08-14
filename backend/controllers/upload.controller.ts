@@ -1,244 +1,176 @@
 import { Request, Response } from 'express';
-import { uploadSingle, getFileUrl, getRelativePath, deleteFile } from '../utils/upload';
-import { extractTokenFromHeader, verifyToken } from '../utils/jwt';
+import { uploadSingle, getFileUrl, getRelativePath, deleteFile, verifyImageSignature } from '../utils/upload';
 import { userService } from '../services';
 import logger from '../utils/logger';
 
 /**
- * 上传单个文件（如图片）
+ * 上传单个文件（如图片，需通过authenticate中间件）
  */
-export const uploadFile = async (req: Request, res: Response) => {
-  try {
-    // 验证令牌
-    const token = extractTokenFromHeader(req.headers.authorization);
-    if (!token) {
-      return res.status(401).json({
+export const uploadFile = (req: Request, res: Response) => {
+  // 使用中间件处理文件上传
+  uploadSingle('file')(req, res, async (err: any) => {
+    if (err) {
+      logger.error('文件上传失败:', err);
+      return res.status(400).json({
         success: false,
         error: {
-          code: 'UNAUTHORIZED',
-          message: '未提供认证令牌',
+          code: 'UPLOAD_FAILED',
+          message: err.message || '文件上传失败',
         },
       });
     }
 
-    const payload = verifyToken(token);
-    if (!payload) {
-      return res.status(401).json({
+    if (!req.file) {
+      return res.status(400).json({
         success: false,
         error: {
-          code: 'INVALID_TOKEN',
-          message: '无效的认证令牌',
+          code: 'NO_FILE',
+          message: '未选择文件',
         },
       });
     }
 
-    // 使用中间件处理文件上传
-    uploadSingle('file')(req, res, async (err: any) => {
-      if (err) {
-        logger.error('文件上传失败:', err);
-        return res.status(400).json({
-          success: false,
-          error: {
-            code: 'UPLOAD_FAILED',
-            message: err.message || '文件上传失败',
-          },
-        });
-      }
+    // 校验文件真实内容（magic bytes），防止伪造MIME上传非图片文件
+    if (!verifyImageSignature(req.file.path, req.file.mimetype)) {
+      await deleteFile(req.file.path).catch(() => {});
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_FILE_CONTENT',
+          message: '文件内容与图片格式不符',
+        },
+      });
+    }
 
-      if (!req.file) {
-        return res.status(400).json({
-          success: false,
-          error: {
-            code: 'NO_FILE',
-            message: '未选择文件',
-          },
-        });
-      }
+    // 生成文件URL
+    const fileUrl = getFileUrl(req.file.path);
+    const relativePath = getRelativePath(req.file.filename);
 
-      // 生成文件URL
-      const fileUrl = getFileUrl(req.file.path);
-      const relativePath = getRelativePath(req.file.filename);
+    logger.info('文件上传成功:', {
+      userId: req.user!.userId,
+      filename: req.file.filename,
+      size: req.file.size,
+      url: fileUrl,
+    });
 
-      logger.info('文件上传成功:', {
-        userId: payload.userId,
-        filename: req.file.originalname,
+    res.json({
+      success: true,
+      data: {
+        filename: req.file.filename,
         size: req.file.size,
+        mimetype: req.file.mimetype,
         url: fileUrl,
+        path: relativePath,
+      },
+    });
+  });
+};
+
+/**
+ * 上传用户头像（需通过authenticate中间件）
+ */
+export const uploadAvatar = (req: Request, res: Response) => {
+  // 使用中间件处理文件上传
+  uploadSingle('avatar')(req, res, async (err: any) => {
+    if (err) {
+      logger.error('头像上传失败:', err);
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'UPLOAD_FAILED',
+          message: err.message || '头像上传失败',
+        },
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'NO_FILE',
+          message: '未选择头像文件',
+        },
+      });
+    }
+
+    // 校验文件真实内容（magic bytes）
+    if (!verifyImageSignature(req.file.path, req.file.mimetype)) {
+      await deleteFile(req.file.path).catch(() => {});
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_FILE_CONTENT',
+          message: '文件内容与图片格式不符',
+        },
+      });
+    }
+
+    // 生成相对路径和完整URL
+    const relativePath = getRelativePath(req.file.filename);
+    const avatarUrl = getFileUrl(relativePath);
+
+    try {
+      // 获取用户当前头像信息（用于删除旧头像）
+      const currentUser = await userService.getUserById(req.user!.userId);
+      const oldAvatar = currentUser?.avatar;
+
+      // 更新用户头像（存储相对路径到数据库）
+      const user = await userService.updateUserAvatar(req.user!.userId, '/' + relativePath);
+
+      // 如果用户有旧头像且不是默认头像，删除旧头像文件
+      if (oldAvatar && !oldAvatar.includes('default-avatar')) {
+        try {
+          await deleteFile(oldAvatar);
+        } catch (deleteError) {
+          logger.warn('删除旧头像失败:', deleteError);
+          // 不阻止上传流程继续
+        }
+      }
+
+      logger.info('用户头像更新成功:', {
+        userId: req.user!.userId,
+        newAvatar: avatarUrl,
       });
 
       res.json({
         success: true,
         data: {
-          filename: req.file.originalname,
-          size: req.file.size,
-          mimetype: req.file.mimetype,
-          url: fileUrl,
-          path: relativePath,
-        },
-      });
-    });
-  } catch (error) {
-    logger.error('上传文件处理失败:', error);
-    res.status(500).json({
-      success: false,
-      error: {
-        code: 'UPLOAD_PROCESS_FAILED',
-        message: error instanceof Error ? error.message : '文件上传处理失败',
-      },
-    });
-  }
-};
-
-/**
- * 上传用户头像
- */
-export const uploadAvatar = async (req: Request, res: Response) => {
-  try {
-    // 验证令牌
-    const token = extractTokenFromHeader(req.headers.authorization);
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: '未提供认证令牌',
-        },
-      });
-    }
-
-    const payload = verifyToken(token);
-    if (!payload) {
-      return res.status(401).json({
-        success: false,
-        error: {
-          code: 'INVALID_TOKEN',
-          message: '无效的认证令牌',
-        },
-      });
-    }
-
-    // 使用中间件处理文件上传
-    uploadSingle('avatar')(req, res, async (err: any) => {
-      if (err) {
-        logger.error('头像上传失败:', err);
-        return res.status(400).json({
-          success: false,
-          error: {
-            code: 'UPLOAD_FAILED',
-            message: err.message || '头像上传失败',
+          user,
+          fileInfo: {
+            filename: req.file.filename,
+            size: req.file.size,
+            mimetype: req.file.mimetype,
+            url: avatarUrl,
+            path: relativePath,
           },
-        });
-      }
-
-      if (!req.file) {
-        return res.status(400).json({
-          success: false,
-          error: {
-            code: 'NO_FILE',
-            message: '未选择头像文件',
-          },
-        });
-      }
-
-      // 生成相对路径和完整URL
-      const relativePath = getRelativePath(req.file.filename);
-      const avatarUrl = getFileUrl(relativePath);
-
+        },
+      });
+    } catch (serviceError) {
+      // 如果服务失败，删除已上传的文件
       try {
-        // 获取用户当前头像信息（用于删除旧头像）
-        const currentUser = await userService.getUserById(payload.userId);
-        const oldAvatar = currentUser?.avatar;
-
-        // 更新用户头像（存储相对路径到数据库）
-        const user = await userService.updateUserAvatar(payload.userId, '/' + relativePath);
-
-        // 如果用户有旧头像且不是默认头像，删除旧头像文件
-        if (oldAvatar && !oldAvatar.includes('default-avatar')) {
-          try {
-            await deleteFile(oldAvatar);
-          } catch (deleteError) {
-            logger.warn('删除旧头像失败:', deleteError);
-            // 不阻止上传流程继续
-          }
-        }
-
-        logger.info('用户头像更新成功:', {
-          userId: payload.userId,
-          oldAvatar: oldAvatar || '无',
-          newAvatar: avatarUrl,
-        });
-
-        res.json({
-          success: true,
-          data: {
-            user,
-            fileInfo: {
-              filename: req.file.originalname,
-              size: req.file.size,
-              mimetype: req.file.mimetype,
-              url: avatarUrl,
-              path: relativePath,
-            },
-          },
-        });
-      } catch (serviceError) {
-        // 如果服务失败，删除已上传的文件
-        try {
-          await deleteFile(req.file.path);
-        } catch (deleteError) {
-          logger.warn('清理上传的文件失败:', deleteError);
-        }
-
-        logger.error('更新用户头像失败:', serviceError);
-        res.status(500).json({
-          success: false,
-          error: {
-            code: 'UPDATE_AVATAR_FAILED',
-            message: serviceError instanceof Error ? serviceError.message : '更新用户头像失败',
-          },
-        });
+        await deleteFile(req.file.path);
+      } catch (deleteError) {
+        logger.warn('清理上传的文件失败:', deleteError);
       }
-    });
-  } catch (error) {
-    logger.error('上传头像处理失败:', error);
-    res.status(500).json({
-      success: false,
-      error: {
-        code: 'AVATAR_PROCESS_FAILED',
-        message: error instanceof Error ? error.message : '头像上传处理失败',
-      },
-    });
-  }
+
+      logger.error('更新用户头像失败:', serviceError);
+      res.status(500).json({
+        success: false,
+        error: {
+          code: 'UPDATE_AVATAR_FAILED',
+          message: serviceError instanceof Error ? serviceError.message : '更新用户头像失败',
+        },
+      });
+    }
+  });
 };
 
 /**
- * 删除文件
+ * 删除文件（需通过authenticate + requireAdmin中间件）
+ * 仅允许删除 uploads 目录内的文件
  */
 export const deleteUploadedFile = async (req: Request, res: Response) => {
   try {
-    // 验证令牌
-    const token = extractTokenFromHeader(req.headers.authorization);
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: '未提供认证令牌',
-        },
-      });
-    }
-
-    const payload = verifyToken(token);
-    if (!payload) {
-      return res.status(401).json({
-        success: false,
-        error: {
-          code: 'INVALID_TOKEN',
-          message: '无效的认证令牌',
-        },
-      });
-    }
-
     const { filepath } = req.body;
     if (!filepath) {
       return res.status(400).json({
@@ -250,12 +182,10 @@ export const deleteUploadedFile = async (req: Request, res: Response) => {
       });
     }
 
-    // 检查权限：用户只能删除自己的文件
-    // 这里可以根据业务需求添加更严格的权限检查
     await deleteFile(filepath);
 
     logger.info('文件删除成功:', {
-      userId: payload.userId,
+      userId: req.user!.userId,
       filepath,
     });
 
@@ -265,7 +195,8 @@ export const deleteUploadedFile = async (req: Request, res: Response) => {
     });
   } catch (error) {
     logger.error('删除文件失败:', error);
-    res.status(500).json({
+    const status = error instanceof Error && error.message.includes('非法文件路径') ? 400 : 500;
+    res.status(status).json({
       success: false,
       error: {
         code: 'DELETE_FILE_FAILED',

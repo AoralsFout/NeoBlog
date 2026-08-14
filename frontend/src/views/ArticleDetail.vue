@@ -38,6 +38,7 @@
 import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/github-dark.min.css';
 import { articleApi } from '@/utils/api';
@@ -71,7 +72,7 @@ const canEdit = computed(() => {
 
 const renderedContent = computed(() => {
   if (!article.value) return '';
-  return renderMarkdown(article.value.content);
+  return renderMarkdown(article.value.content || '');
 });
 
 let headingIndex = 0;
@@ -95,7 +96,12 @@ marked.use({ renderer: markedRenderer, breaks: true, gfm: true });
 
 function renderMarkdown(content: string): string {
   headingIndex = 0;
-  return marked.parse(content) as string;
+  const html = marked.parse(content) as string;
+  // 清洗HTML，移除脚本等危险内容（防存储型XSS）
+  return DOMPurify.sanitize(html, {
+    // 高亮代码需要保留class属性
+    FORBID_TAGS: ['style', 'form', 'input', 'iframe', 'object', 'embed'],
+  });
 }
 
 function extractHeadings(content: string) {
@@ -117,7 +123,12 @@ function goEdit() {
 }
 
 function goBack() {
-  router.back();
+  // 有站内历史时返回上一页，否则回到文章列表
+  if (window.history.state && (window.history.state as any).back) {
+    router.back();
+  } else {
+    router.push('/articles');
+  }
 }
 
 function formatDate(dateStr: string): string {

@@ -53,6 +53,7 @@ import {
   deleteArticle,
 } from '../controllers/article.controller';
 import { authenticate, requireAdmin } from '../middleware/auth';
+import { userUpdateValidationRules } from '../utils/validator';
 
 // 创建Express应用
 const app = express();
@@ -67,14 +68,14 @@ app.use(cors({
   credentials: true,
 }));
 
-// 请求体解析
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// 请求体解析（限制放宽到2MB，避免长文章被100KB默认值拦截）
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
 // 速率限制
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15分钟
-  max: 100, // 每个IP限制100个请求
+  max: 1000, // 每个IP限制1000个请求
   message: '请求过于频繁，请稍后再试。',
   standardHeaders: true,
   legacyHeaders: false,
@@ -84,7 +85,7 @@ app.use('/api/', limiter);
 
 // 静态文件服务
 const publicDir = path.join(__dirname, '..', 'public');
-app.use(express.static(publicDir)); 
+app.use(express.static(publicDir));
 
 // 日志中间件
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -98,28 +99,28 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 // API路由
 // 健康检查
 app.get('/api/health', healthCheck);
-app.get('/api/system', systemInfo);
-app.get('/api/routes', listRoutes);
+app.get('/api/system', authenticate, requireAdmin, systemInfo);
+app.get('/api/routes', authenticate, requireAdmin, listRoutes);
 
 // 认证路由
 app.get('/api/auth/natayark', redirectToOAuth);
 app.get('/api/auth/natayark/callback', handleOAuthCallback);
-app.get('/api/auth/me', getCurrentUser);
-app.post('/api/auth/logout', logout);
+app.get('/api/auth/me', authenticate, getCurrentUser);
+app.post('/api/auth/logout', authenticate, logout);
 
-// 用户路由
-app.get('/api/users', getUsers);
-app.get('/api/users/:id', getUserById);
-app.patch('/api/users/:id', updateUser);
-app.get('/api/users/search', searchUsers);
+// 用户路由（注意：/search 必须注册在 /:id 之前）
+app.get('/api/users', authenticate, requireAdmin, getUsers);
+app.get('/api/users/search', authenticate, requireAdmin, searchUsers);
+app.get('/api/users/:id', authenticate, getUserById);
+app.patch('/api/users/:id', authenticate, userUpdateValidationRules, updateUser);
 
 // 音乐路由
 app.get('/api/music/getMusicList', getMusicList);
 
 // 评论路由
 app.get('/api/comments', getComments);
-app.post('/api/comments', createComment);
-app.post('/api/comments/:id/reaction', toggleReaction);
+app.post('/api/comments', authenticate, createComment);
+app.post('/api/comments/:id/reaction', authenticate, toggleReaction);
 
 // 文章路由
 app.get('/api/articles/top', getTopArticles);
@@ -129,10 +130,10 @@ app.post('/api/articles', authenticate, requireAdmin, createArticle);
 app.patch('/api/articles/:id', authenticate, requireAdmin, updateArticle);
 app.delete('/api/articles/:id', authenticate, requireAdmin, deleteArticle);
 
-// 文件上传路由
-app.post('/api/upload', uploadFile);
-app.post('/api/upload/avatar', uploadAvatar);
-app.delete('/api/upload', deleteUploadedFile);
+// 文件上传路由（需登录；删除文件需管理员）
+app.post('/api/upload', authenticate, uploadFile);
+app.post('/api/upload/avatar', authenticate, uploadAvatar);
+app.delete('/api/upload', authenticate, requireAdmin, deleteUploadedFile);
 
 // 根路由
 app.get('/', (req: Request, res: Response) => {
@@ -155,7 +156,21 @@ app.use((req: Request, res: Response) => {
 });
 
 // 错误处理中间件
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  // 请求体解析错误：映射为4xx
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({
+      success: false,
+      error: { code: 'PAYLOAD_TOO_LARGE', message: '请求体过大' },
+    });
+  }
+  if (err instanceof SyntaxError && 'body' in err) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_JSON', message: '请求体不是有效的JSON' },
+    });
+  }
+
   logger.error('服务器错误:', err);
 
   res.status(500).json({

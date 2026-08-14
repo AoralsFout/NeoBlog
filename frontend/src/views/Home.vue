@@ -149,7 +149,6 @@
 import Navigation from '@/components/Navigation.vue';
 import Card from '@/components/Card.vue';
 import Footer from '@/components/Footer.vue';
-import MusicBox from '@/components/MusicBox.vue';
 import { useThemeStore } from '@/stores/theme';
 import { ref, onMounted, computed, onBeforeUnmount } from 'vue';
 import { useRoute } from 'vue-router';
@@ -171,6 +170,11 @@ const theme = computed(() => themeStore.theme);
 const layout = computed(() => layoutStore.layout);
 
 const windowWidth = ref(window.innerWidth);
+
+// 监听窗口尺寸变化，保证响应式布局实时更新
+const updateWindowWidth = () => {
+  windowWidth.value = window.innerWidth;
+};
 
 // 文章详情页时显示目录
 const showToc = computed(() => route.name === '文章详情' && articleStore.headings.length > 0);
@@ -203,11 +207,13 @@ const { start: startWaveAnimation, stop: stopWaveAnimation } = useWaveAnimation(
 onMounted(() => {
     startBackgroundAnimation()
     startWaveAnimation()
+    window.addEventListener('resize', updateWindowWidth)
 })
 
 onBeforeUnmount(() => {
     stopBackgroundAnimation()
     stopWaveAnimation()
+    window.removeEventListener('resize', updateWindowWidth)
 })
 </script>
 

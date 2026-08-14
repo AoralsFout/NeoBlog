@@ -1,6 +1,7 @@
 <!-- e:\NeoBlog\frontend\src\components\Button.vue -->
 <template>
     <button
+        :type="nativeType"
         :class="['neo-btn', `neo-btn--${type}`, `neo-btn--${size}`, { 'is-loading': loading, 'is-disabled': disabled }]"
         :disabled="disabled || loading" v-bind="$attrs" @click="handleClick">
         <span v-if="loading" class="neo-btn__loader">
@@ -21,8 +22,10 @@
 <script setup lang="ts">
 // 定义 Props
 interface Props {
-    /** 按钮类型 */
+    /** 按钮样式类型 */
     type?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger'
+    /** 原生HTML按钮类型（默认button，防止在表单内意外触发submit） */
+    nativeType?: 'button' | 'submit' | 'reset'
     /** 按钮尺寸 */
     size?: 'sm' | 'md' | 'lg'
     /** 是否禁用 */
@@ -33,6 +36,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
     type: 'primary',
+    nativeType: 'button',
     size: 'md',
     disabled: false,
     loading: false

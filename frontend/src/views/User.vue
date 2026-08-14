@@ -33,6 +33,7 @@
               <Button class="change-avatar-btn" @click="changeAvatar" :disabled="isUploadingAvatar || userStore.isLoading">
                 {{ isUploadingAvatar ? '上传中...' : '上传头像' }}
               </Button>
+              <p v-if="avatarMessage" class="avatar-message" :class="{ error: avatarError }">{{ avatarMessage }}</p>
               <input
                 type="file"
                 ref="fileInput"
@@ -224,6 +225,10 @@ const saveChanges = async () => {
 // 文件输入引用
 const fileInput = ref<HTMLInputElement | null>(null);
 
+// 头像上传反馈信息（替代alert弹窗）
+const avatarMessage = ref('');
+const avatarError = ref(false);
+
 // 更换头像
 const changeAvatar = () => {
   if (fileInput.value) {
@@ -239,18 +244,22 @@ const handleFileSelect = async (event: Event) => {
   }
 
   const file = input.files[0]!;
+  avatarMessage.value = '';
+  avatarError.value = false;
 
   // 验证文件类型
   const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
   if (!allowedTypes.includes(file.type)) {
-    alert('请选择图片文件（JPEG、PNG、GIF 或 WebP 格式）');
+    avatarMessage.value = '请选择图片文件（JPEG、PNG、GIF 或 WebP 格式）';
+    avatarError.value = true;
     return;
   }
 
   // 验证文件大小（5MB）
   const maxSize = 5 * 1024 * 1024; // 5MB
   if (file.size > maxSize) {
-    alert('文件大小不能超过5MB');
+    avatarMessage.value = '文件大小不能超过5MB';
+    avatarError.value = true;
     return;
   }
 
@@ -263,12 +272,11 @@ const handleFileSelect = async (event: Event) => {
     // 重置文件输入，以便可以选择同一个文件再次上传
     input.value = '';
 
-    // 显示成功消息
-    // 这里可以使用更优雅的通知方式，暂时使用alert
-    alert('头像上传成功！');
+    avatarMessage.value = '头像上传成功！';
   } catch (error) {
     console.error('头像上传失败:', error);
-    alert('头像上传失败，请重试');
+    avatarMessage.value = '头像上传失败，请重试';
+    avatarError.value = true;
   } finally {
     isUploadingAvatar.value = false;
   }
@@ -297,7 +305,7 @@ const getStatusText = (status?: string) => {
       return '正常';
     case 'banned':
       return '已封禁';
-    case 'forzen':
+    case 'frozen':
       return '已冻结';
     default:
       return '未知';
@@ -414,6 +422,17 @@ const getStatusText = (status?: string) => {
   margin-bottom: 1.5rem;
 }
 
+.avatar-message {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #28a745;
+  text-align: center;
+}
+
+.avatar-message.error {
+  color: #dc3545;
+}
+
 .user-avatar {
   width: 120px;
   height: 120px;
@@ -498,7 +517,7 @@ const getStatusText = (status?: string) => {
 }
 
 .badge.banned,
-.badge.forzen {
+.badge.frozen {
   background-color: rgba(255, 193, 7, 0.1);
   color: #ffc107;
 }

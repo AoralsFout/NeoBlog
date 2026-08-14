@@ -1,4 +1,5 @@
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 
 /**
  * 哈希密码（用于client_secret的PASSWORD_HASH）
@@ -21,23 +22,10 @@ export const verifyPassword = async (plainText: string, hash: string): Promise<b
 };
 
 /**
- * 生成随机state参数（用于OAuth CSRF防护）
- * @returns 随机字符串
- */
-export const generateState = (): string => {
-  return bcrypt.genSaltSync(10).replace(/\//g, '_').replace(/\./g, '_');
-};
-
-/**
- * 生成随机令牌
- * @param length 长度
+ * 生成随机令牌（加密安全）
+ * @param length 字节数
  * @returns 随机字符串
  */
 export const generateRandomToken = (length: number = 32): string => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
+  return crypto.randomBytes(length).toString('base64url');
 };

@@ -64,16 +64,20 @@ const router = createRouter({
 })
 
 // 全局前置守卫
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore()
-  
+
   if (to.meta.requiresAdmin) {
+    // 页面刷新时用户状态尚未加载：先等待初始化完成再判断
+    if (!userStore.isAuthenticated) {
+      await userStore.initUser()
+    }
     if (!userStore.isAuthenticated || !userStore.isAdmin) {
       next('/')
       return
     }
   }
-  
+
   next()
 })
 

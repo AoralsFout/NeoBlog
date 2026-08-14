@@ -7,6 +7,8 @@ export interface JwtPayload {
   natayarkId: number;
   username: string;
   role: string;
+  /** 令牌版本号，用于登出后整体撤销 */
+  tv: number;
   iat?: number;
   exp?: number;
 }

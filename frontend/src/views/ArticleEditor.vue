@@ -5,8 +5,8 @@
     </div>
     <div class="content">
       <div v-if="loading" class="state">加载中...</div>
-      <div v-else-if="!userStore.isAdmin" class="state">请先登录</div>
-      <form v-else class="editor-form" @submit.prevent="handleSubmit">
+      <div v-else-if="!userStore.isAdmin" class="state">需要管理员权限</div>
+      <form v-else class="editor-form" @submit.prevent="onFormSubmit" @keydown.enter="onFormEnter">
         <div class="field">
           <label>标题</label>
           <input v-model="title" type="text" placeholder="文章标题" required maxlength="200" />
@@ -30,19 +30,13 @@
               {{ preview ? '编辑' : '预览' }}
             </button>
           </div>
-          <textarea
-            v-if="!preview"
-            v-model="content"
-            placeholder="使用 Markdown 格式..."
-            rows="20"
-            required
-            class="content-input"
-          ></textarea>
+          <textarea v-if="!preview" v-model="content" placeholder="使用 Markdown 格式..." rows="20" required
+            class="content-input"></textarea>
           <div v-else class="markdown-preview markdown-body" v-html="renderedPreview"></div>
         </div>
         <div class="actions">
-          <Button :loading="submitting">{{ isEdit ? '保存修改' : '发布文章' }}</Button>
-          <Button type="outline" @click="goBack">取消</Button>
+          <Button native-type="submit" :loading="submitting" @click="markSubmitIntent">{{ isEdit ? '保存修改' : '发布文章' }}</Button>
+          <Button type="outline" native-type="button" @click.prevent="goBack">取消</Button>
         </div>
         <div v-if="submitError" class="submit-error">{{ submitError }}</div>
       </form>
@@ -54,6 +48,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/github-dark.min.css';
 import { articleApi } from '@/utils/api';
@@ -79,7 +74,9 @@ const submitError = ref('');
 
 const renderedPreview = computed(() => {
   if (!content.value) return '';
-  return marked.parse(content.value) as string;
+  const html = marked.parse(content.value) as string;
+  // 预览同样需要清洗，防止粘贴的恶意HTML在编辑页执行
+  return DOMPurify.sanitize(html);
 });
 
 function goBack() {
@@ -90,7 +87,34 @@ function goBack() {
   }
 }
 
+// 提交意图标记：只有用户主动点击“发布/保存”或在输入框按回车时才允许提交。
+// 表单内其他按钮（如取消）以任何方式触发的submit事件都会被忽略，避免误创建/覆盖文章。
+let submitIntent = false;
+
+function markSubmitIntent() {
+  submitIntent = true;
+}
+
+function onFormSubmit() {
+  if (!submitIntent) {
+    return;
+  }
+  submitIntent = false;
+  handleSubmit();
+}
+
+function onFormEnter(e: KeyboardEvent) {
+  const target = e.target as HTMLElement | null;
+  // 仅在文本输入框内回车时提交；textarea回车为换行，不拦截
+  if (target && target.tagName === 'INPUT') {
+    e.preventDefault();
+    handleSubmit();
+  }
+}
+
 async function handleSubmit() {
+  // 防止重复提交（按钮disabled挡不住键盘触发的submit）
+  if (submitting.value) return;
   if (!title.value.trim() || !content.value.trim()) return;
   submitting.value = true;
   submitError.value = '';
@@ -124,7 +148,8 @@ onMounted(async () => {
   if (isEdit.value) {
     loading.value = true;
     try {
-      const res = await articleApi.getArticleById(articleId.value!);
+      // view=false：编辑器加载不增加浏览量
+      const res = await articleApi.getArticleById(articleId.value!, false);
       if (res.success && res.data) {
         const a = res.data;
         title.value = a.title;
@@ -269,9 +294,21 @@ onMounted(async () => {
   margin-bottom: 0.5em;
 }
 
-.markdown-body :deep(p) { line-height: 1.8; margin-bottom: 0.8rem; }
-.markdown-body :deep(pre) { border-radius: var(--radius-medium); overflow-x: auto; }
-.markdown-body :deep(code) { font-family: 'Jetbrains Mono', 'Maple Mono CN', monospace; font-size: 0.85rem; }
+.markdown-body :deep(p) {
+  line-height: 1.8;
+  margin-bottom: 0.8rem;
+}
+
+.markdown-body :deep(pre) {
+  border-radius: var(--radius-medium);
+  overflow-x: auto;
+}
+
+.markdown-body :deep(code) {
+  font-family: 'Jetbrains Mono', 'Maple Mono CN', monospace;
+  font-size: 0.85rem;
+}
+
 .markdown-body :deep(blockquote) {
   border-left: 4px solid var(--color-primary);
   padding-left: 1rem;

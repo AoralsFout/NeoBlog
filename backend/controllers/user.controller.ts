@@ -1,37 +1,13 @@
 import { Request, Response } from 'express';
 import { userService } from '../services';
-import { extractTokenFromHeader, verifyToken } from '../utils/jwt';
 import { validateRequest, validateIdParam, validatePagination } from '../utils/validator';
 import logger from '../utils/logger';
 
 /**
- * 获取用户列表（需要管理员权限）
+ * 获取用户列表（需要管理员权限，通过中间件校验）
  */
 export const getUsers = async (req: Request, res: Response) => {
   try {
-    // 验证令牌和权限
-    const token = extractTokenFromHeader(req.headers.authorization);
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: '未提供认证令牌',
-        },
-      });
-    }
-
-    const payload = verifyToken(token);
-    if (!payload || payload.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        error: {
-          code: 'FORBIDDEN',
-          message: '需要管理员权限',
-        },
-      });
-    }
-
     // 获取分页参数
     const { page, limit } = validatePagination(req.query.page as string, req.query.limit as string);
 
@@ -63,33 +39,10 @@ export const getUsers = async (req: Request, res: Response) => {
 };
 
 /**
- * 获取指定用户信息
+ * 获取指定用户信息（需通过authenticate中间件）
  */
 export const getUserById = async (req: Request, res: Response) => {
   try {
-    // 验证令牌
-    const token = extractTokenFromHeader(req.headers.authorization);
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: '未提供认证令牌',
-        },
-      });
-    }
-
-    const payload = verifyToken(token);
-    if (!payload) {
-      return res.status(401).json({
-        success: false,
-        error: {
-          code: 'INVALID_TOKEN',
-          message: '无效的认证令牌',
-        },
-      });
-    }
-
     // 验证用户ID参数
     const userId = validateIdParam(req.params.id as string);
     if (!userId) {
@@ -103,7 +56,7 @@ export const getUserById = async (req: Request, res: Response) => {
     }
 
     // 检查权限（只能查看自己的信息，除非是管理员）
-    if (payload.userId !== userId && payload.role !== 'admin') {
+    if (req.user!.userId !== userId && req.user!.role !== 'admin') {
       return res.status(403).json({
         success: false,
         error: {
@@ -142,33 +95,10 @@ export const getUserById = async (req: Request, res: Response) => {
 };
 
 /**
- * 更新用户信息
+ * 更新用户信息（需通过authenticate中间件 + userUpdateValidationRules）
  */
 export const updateUser = async (req: Request, res: Response) => {
   try {
-    // 验证令牌
-    const token = extractTokenFromHeader(req.headers.authorization);
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: '未提供认证令牌',
-        },
-      });
-    }
-
-    const payload = verifyToken(token);
-    if (!payload) {
-      return res.status(401).json({
-        success: false,
-        error: {
-          code: 'INVALID_TOKEN',
-          message: '无效的认证令牌',
-        },
-      });
-    }
-
     // 验证用户ID参数
     const userId = validateIdParam(req.params.id as string);
     if (!userId) {
@@ -182,7 +112,7 @@ export const updateUser = async (req: Request, res: Response) => {
     }
 
     // 检查权限（只能更新自己的信息，除非是管理员）
-    if (payload.userId !== userId && payload.role !== 'admin') {
+    if (req.user!.userId !== userId && req.user!.role !== 'admin') {
       return res.status(403).json({
         success: false,
         error: {
@@ -211,15 +141,32 @@ export const updateUser = async (req: Request, res: Response) => {
     if (username) updateData.username = username;
     if (email) updateData.email = email;
     if (avatar) {
-      // TODO:删除旧头像文件
       updateData.avatar = avatar;
     }
-    if (role && payload.role === 'admin') updateData.role = role;
-    if (status && payload.role === 'admin') updateData.status = status;
+    if (role !== undefined && req.user!.role === 'admin') {
+      // 角色必须为合法枚举值
+      if (!['admin', 'member'].includes(String(role).toLowerCase())) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'VALIDATION_ERROR', message: '无效的角色值，必须为 admin 或 member' },
+        });
+      }
+      updateData.role = String(role).toLowerCase();
+    }
+    if (status !== undefined && req.user!.role === 'admin') {
+      // 状态必须为合法枚举值
+      if (!['normal', 'banned', 'frozen'].includes(String(status).toLowerCase())) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'VALIDATION_ERROR', message: '无效的状态值，必须为 normal、banned 或 frozen' },
+        });
+      }
+      updateData.status = String(status).toLowerCase();
+    }
 
     const user = await userService.updateUser(userId, updateData);
 
-    logger.info('更新用户信息:', { userId, updatedBy: payload.userId });
+    logger.info('更新用户信息:', { userId, updatedBy: req.user!.userId });
 
     res.json({
       success: true,
@@ -227,6 +174,13 @@ export const updateUser = async (req: Request, res: Response) => {
     });
   } catch (error) {
     logger.error('更新用户信息失败:', error);
+    // 邮箱唯一约束冲突
+    if (error instanceof Error && error.message.includes('已被使用')) {
+      return res.status(409).json({
+        success: false,
+        error: { code: 'EMAIL_CONFLICT', message: error.message },
+      });
+    }
     res.status(500).json({
       success: false,
       error: {
@@ -238,36 +192,14 @@ export const updateUser = async (req: Request, res: Response) => {
 };
 
 /**
- * 搜索用户（需要管理员权限）
+ * 搜索用户（需要管理员权限，通过中间件校验）
  */
 export const searchUsers = async (req: Request, res: Response) => {
   try {
-    // 验证令牌和权限
-    const token = extractTokenFromHeader(req.headers.authorization);
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: '未提供认证令牌',
-        },
-      });
-    }
-
-    const payload = verifyToken(token);
-    if (!payload || payload.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        error: {
-          code: 'FORBIDDEN',
-          message: '需要管理员权限',
-        },
-      });
-    }
-
-    // 验证搜索参数
-    const { query } = req.query;
-    if (!query || typeof query !== 'string') {
+    // 兼容 query 与 q 两种参数名
+    const { query, q } = req.query;
+    const keyword = (typeof query === 'string' && query) || (typeof q === 'string' && q) || '';
+    if (!keyword) {
       return res.status(400).json({
         success: false,
         error: {
@@ -281,7 +213,7 @@ export const searchUsers = async (req: Request, res: Response) => {
     const { page, limit } = validatePagination(req.query.page as string, req.query.limit as string);
 
     // 搜索用户
-    const { users, total } = await userService.searchUsers(query, page, limit);
+    const { users, total } = await userService.searchUsers(keyword, page, limit);
 
     res.json({
       success: true,

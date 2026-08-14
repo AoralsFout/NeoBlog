@@ -33,7 +33,9 @@ export const getArticleById = async (req: Request, res: Response) => {
       });
     }
 
-    const article = await articleService.getArticleById(id);
+    // view=false 时跳过浏览计数（编辑器加载等场景）
+    const incrementView = req.query.view !== 'false';
+    const article = await articleService.getArticleById(id, incrementView);
     if (!article) {
       return res.status(404).json({
         success: false,
@@ -107,7 +109,7 @@ export const updateArticle = async (req: Request, res: Response) => {
       });
     }
 
-    const existing = await articleService.getArticleById(id);
+    const existing = await articleService.getArticleById(id, false);
     if (!existing) {
       return res.status(404).json({
         success: false,
@@ -116,6 +118,21 @@ export const updateArticle = async (req: Request, res: Response) => {
     }
 
     const { title, content, summary, cover_image, tags } = req.body;
+
+    // 校验：更新时若提供了空标题/空内容则拒绝
+    if (title !== undefined && (!title || !String(title).trim())) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_PARAMS', message: '文章标题不能为空' },
+      });
+    }
+    if (content !== undefined && (!content || !String(content).trim())) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_PARAMS', message: '文章内容不能为空' },
+      });
+    }
+
     const article = await articleService.updateArticle(id, { title, content, summary, cover_image, tags });
 
     res.json({ success: true, data: article });
@@ -138,7 +155,7 @@ export const deleteArticle = async (req: Request, res: Response) => {
       });
     }
 
-    const existing = await articleService.getArticleById(id);
+    const existing = await articleService.getArticleById(id, false);
     if (!existing) {
       return res.status(404).json({
         success: false,
