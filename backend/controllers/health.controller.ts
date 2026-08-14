@@ -128,6 +128,16 @@ export const listRoutes = (req: Request, res: Response) => {
       path: '/api/music/getMusicList',
       description: '获取音乐列表',
     },
+    {
+      method: 'GET',
+      path: '/api/stats',
+      description: '站点统计信息',
+    },
+    {
+      method: 'GET',
+      path: '/api/tags',
+      description: '标签云',
+    },
   ];
 
   res.json({

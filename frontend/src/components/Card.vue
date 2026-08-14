@@ -15,6 +15,7 @@
 
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 
     background-color: var(--bg-primary);
     border-radius: var(--radius-small);

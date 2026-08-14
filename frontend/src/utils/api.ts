@@ -224,3 +224,20 @@ export const uploadApi = {
    */
   deleteFile: (filepath: string) => del<{ success: boolean; message: string }>('/api/upload', { filepath }),
 };
+
+/**
+ * 站点统计与标签API
+ */
+export const statsApi = {
+  /**
+   * 获取站点统计信息
+   */
+  getSiteStats: () =>
+    get<{ success: boolean; data: { articles: number; views: number; comments: number; first_article_at: string | null } }>('/api/stats'),
+
+  /**
+   * 获取标签云
+   */
+  getTags: () =>
+    get<{ success: boolean; data: { name: string; count: number }[] }>('/api/tags'),
+};

@@ -52,6 +52,10 @@ import {
   updateArticle,
   deleteArticle,
 } from '../controllers/article.controller';
+import {
+  getSiteStats,
+  getTagCloud,
+} from '../controllers/stats.controller';
 import { authenticate, requireAdmin } from '../middleware/auth';
 import { userUpdateValidationRules } from '../utils/validator';
 
@@ -129,6 +133,10 @@ app.get('/api/articles/:id', getArticleById);
 app.post('/api/articles', authenticate, requireAdmin, createArticle);
 app.patch('/api/articles/:id', authenticate, requireAdmin, updateArticle);
 app.delete('/api/articles/:id', authenticate, requireAdmin, deleteArticle);
+
+// 站点统计与标签云
+app.get('/api/stats', getSiteStats);
+app.get('/api/tags', getTagCloud);
 
 // 文件上传路由（需登录；删除文件需管理员）
 app.post('/api/upload', authenticate, uploadFile);

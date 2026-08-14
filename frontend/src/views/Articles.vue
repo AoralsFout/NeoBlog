@@ -12,6 +12,11 @@
           <button :class="{ active: sort === 'time' }" @click="changeSort('time')">最新</button>
           <button :class="{ active: sort === 'hot' }" @click="changeSort('hot')">最热</button>
         </div>
+        <div v-if="tag" class="tag-filter">
+          <span class="tag-filter-label">标签：</span>
+          <span class="tag-filter-name">{{ tag }}</span>
+          <button class="tag-filter-clear" title="清除标签筛选" @click="clearTag">✕</button>
+        </div>
       </div>
     </div>
 
@@ -38,7 +43,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { articleApi } from '@/utils/api';
 import { useUserStore } from '@/stores/user';
@@ -58,26 +63,41 @@ const loading = ref(true);
 const error = ref('');
 const sort = ref<'time' | 'hot'>('time');
 const page = ref(1);
+const tag = ref('');
 
+// 构建查询参数（保留标签筛选）
+function buildQuery(overrides: Record<string, string | number>) {
+  const query: Record<string, string | number> = { ...overrides };
+  if (tag.value) query.tag = tag.value;
+  return query;
+}
+
+// 以下操作只更新路由查询参数，由watch统一触发加载，避免重复请求
 function changeSort(newSort: 'time' | 'hot') {
-  sort.value = newSort;
-  page.value = 1;
-  router.replace({ query: { sort: newSort, page: 1 } });
-  loadArticles();
+  if (sort.value === newSort && page.value === 1) return;
+  router.replace({ query: buildQuery({ sort: newSort, page: 1 }) });
 }
 
 function handlePageChange(p: number) {
-  page.value = p;
-  router.replace({ query: { sort: sort.value, page: p } });
-  loadArticles();
+  if (p === page.value) return;
+  router.replace({ query: buildQuery({ sort: sort.value, page: p }) });
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function clearTag() {
+  router.replace({ query: { sort: sort.value, page: 1 } });
 }
 
 async function loadArticles() {
   loading.value = true;
   error.value = '';
   try {
-    const listRes = await articleApi.getArticles({ page: page.value, limit: 5, sort: sort.value });
+    const listRes = await articleApi.getArticles({
+      page: page.value,
+      limit: 5,
+      sort: sort.value,
+      ...(tag.value && { tag: tag.value }),
+    });
     if (listRes.success) {
       articles.value = listRes.articles;
       pagination.value = listRes.pagination;
@@ -89,12 +109,26 @@ async function loadArticles() {
   }
 }
 
-onMounted(() => {
+function applyQuery() {
   const q = route.query;
   if (q.sort === 'hot' || q.sort === 'time') sort.value = q.sort;
-  if (q.page) page.value = Math.max(1, parseInt(q.page as string) || 1);
+  else sort.value = 'time';
+  page.value = q.page ? Math.max(1, parseInt(q.page as string) || 1) : 1;
+  tag.value = typeof q.tag === 'string' ? q.tag : '';
   loadArticles();
+}
+
+onMounted(() => {
+  applyQuery();
 });
+
+// 查询参数变化（侧栏标签点击/排序/分页/清除标签）时统一重新加载
+watch(
+  () => route.query,
+  () => {
+    applyQuery();
+  }
+);
 </script>
 
 <style scoped>
@@ -164,6 +198,38 @@ onMounted(() => {
   background: var(--color-primary);
   border-color: var(--color-primary);
   color: white;
+}
+
+/* 标签筛选指示 */
+.tag-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.tag-filter-name {
+  padding: 0.1rem 0.6rem;
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  color: var(--color-primary);
+  border-radius: var(--radius-medium);
+}
+
+.tag-filter-clear {
+  padding: 0.05rem 0.4rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-medium);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.tag-filter-clear:hover {
+  color: #f5222d;
 }
 
 .content {
