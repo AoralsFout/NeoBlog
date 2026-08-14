@@ -312,6 +312,10 @@ onBeforeUnmount(() => articleStore.clearHeadings());
   font-size: 0.85rem;
 }
 
+.markdown-body :deep(code)::-webkit-scrollbar { 
+  height: 4px;
+}
+
 .markdown-body :deep(blockquote) {
   border-left: 4px solid var(--color-primary);
   padding-left: 1rem;

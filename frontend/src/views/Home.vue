@@ -123,11 +123,8 @@
                             </div>
                         </template>
                     </Card>
-                    <TableOfContents
-                        v-if="showToc"
-                        :headings="articleStore.headings"
-                    />
                     <RightSidebar v-if="showRightInLeft" />
+                    <TableOfContents v-if="showToc" :headings="articleStore.headings" />
                 </div>
                 <div class="main">
                     <router-view v-slot="{ Component }">
@@ -173,7 +170,7 @@ const windowWidth = ref(window.innerWidth);
 
 // 监听窗口尺寸变化，保证响应式布局实时更新
 const updateWindowWidth = () => {
-  windowWidth.value = window.innerWidth;
+    windowWidth.value = window.innerWidth;
 };
 
 // 文章详情页时显示目录
@@ -354,15 +351,15 @@ onBeforeUnmount(() => {
     margin: 0 auto;
 }
 
-/* 三栏布局 */
+/* 三栏布局（minmax(0,1fr)防止长内容撑开侧栏，保持1:3:1比例） */
 .layout-3 {
-    grid-template-columns: 1fr 3fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 3fr) minmax(0, 1fr);
     grid-template-areas: "left main right";
 }
 
 /* 两栏布局 */
 .layout-2 {
-    grid-template-columns: 1fr 3fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
     grid-template-areas: "left main";
 }
 
@@ -399,6 +396,7 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: column;
     gap: 2rem;
+    min-width: 0;
 }
 
 .main {
@@ -406,6 +404,7 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: column;
     gap: 2rem;
+    min-width: 0;
 }
 
 .right {
@@ -413,6 +412,7 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: column;
     gap: 2rem;
+    min-width: 0;
 }
 
 .card {
