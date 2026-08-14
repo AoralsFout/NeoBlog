@@ -45,6 +45,11 @@ export const env = {
   backendUrl: process.env.BACKEND_URL!,
   nodeEnv: process.env.NODE_ENV! as 'development' | 'production' | 'test',
 
+  // 可选：OAuth回调地址（默认使用backendUrl；跨域部署时建议指向前端域名下的/api代理路径）
+  oauthCallbackUrl: process.env.OAUTH_CALLBACK_URL,
+  // 可选：认证Cookie的Domain（需要跨子域共享Cookie时设置，如 .aoralsfout.top）
+  cookieDomain: process.env.COOKIE_DOMAIN,
+
   // 其他
   port: parseInt(process.env.PORT || '3001', 10),
 };

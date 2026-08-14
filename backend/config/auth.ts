@@ -17,7 +17,8 @@ export const oauthConfig = {
   authorizationUrl: env.authorizationUrl,
   tokenUrl: env.tokenUrl,
   userInfoUrl: env.userInfoUrl,
-  redirectUri: `${env.backendUrl}/api/auth/natayark/callback`,
+  // 默认回调到backendUrl；生产跨域部署时通过 OAUTH_CALLBACK_URL 指向前端域名下的/api代理
+  redirectUri: env.oauthCallbackUrl || `${env.backendUrl}/api/auth/natayark/callback`,
   scope: '', // Natayark OAuth不需要scope
 };
 

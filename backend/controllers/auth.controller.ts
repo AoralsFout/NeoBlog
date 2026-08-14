@@ -11,6 +11,8 @@ const authCookieOptions = {
   sameSite: 'lax' as const,
   path: '/',
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7天
+  // 可选：跨子域共享Cookie时通过 COOKIE_DOMAIN 设置（如 .aoralsfout.top）
+  ...(env.cookieDomain && { domain: env.cookieDomain }),
 };
 
 /**
@@ -122,12 +124,13 @@ export const logout = async (req: Request, res: Response) => {
     // 撤销该用户所有已签发令牌（token_version +1）
     await authService.revokeUserToken(userId);
 
-    // 清除认证Cookie
+    // 清除认证Cookie（与设置时的选项保持一致，包括domain）
     res.clearCookie(AUTH_COOKIE_NAME, {
       httpOnly: true,
       secure: env.nodeEnv === 'production',
       sameSite: 'lax',
       path: '/',
+      ...(env.cookieDomain && { domain: env.cookieDomain }),
     });
 
     logger.info('用户登出:', { userId });

@@ -1,6 +1,7 @@
 import axios from 'axios';
 import crypto from 'crypto';
 import { env } from '../config/env';
+import { oauthConfig } from '../config/auth';
 import { hashPassword } from '../utils/hash';
 import logger from '../utils/logger';
 
@@ -36,7 +37,7 @@ class OAuthService {
     const params = new URLSearchParams({
       response_type: 'code',
       client_id: env.clientId,
-      redirect_uri: `${env.backendUrl}/api/auth/natayark/callback`,
+      redirect_uri: oauthConfig.redirectUri,
       state,
     });
 
@@ -58,7 +59,7 @@ class OAuthService {
         code,
         client_id: env.clientId,
         client_secret: hashedClientSecret,
-        redirect_uri: `${env.backendUrl}/api/auth/natayark/callback`,
+        redirect_uri: oauthConfig.redirectUri,
       };
 
       logger.info('交换授权码获取令牌', { clientId: env.clientId });
