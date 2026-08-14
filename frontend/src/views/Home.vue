@@ -30,7 +30,7 @@
                                 </div>
                                 <div class="title">AoralsFout</div>
                                 <div class="desc">
-                                    <p>这是描述这是描述这是描述这是描述这是描述这是描述这是描述这是描述这是描述这是描述这是描述这是描述</p>
+                                    <p>泥嚎！很高兴见到泥 ^ω^。我是一名普通的计科学生，欢迎来到我的博客！</p>
                                 </div>
                                 <div class="links">
                                     <a class="link" href="https://github.com/AoralsFout" target="_blank">

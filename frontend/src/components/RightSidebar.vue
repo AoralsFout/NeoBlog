@@ -119,6 +119,25 @@
             </div>
         </template>
     </Card>
+    <!-- 导航 -->
+    <Card>
+        <template #header>导航</template>
+        <template #body>
+            <div class="card-body">
+                <div class="nav-links">
+                    <a v-for="link in navLinks" :key="link.url" class="nav-link" :href="link.url" target="_blank"
+                        rel="noopener noreferrer">
+                        <span class="nav-link-name">{{ link.name }}</span>
+                        <span class="nav-link-domain">{{ link.domain }}</span>
+                        <svg class="nav-link-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M7 17L17 7M17 7H9M17 7V15" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </template>
+    </Card>
 </template>
 
 <script setup lang="ts">
@@ -166,6 +185,13 @@ const tagFontSize = (count: number) => {
 const goTag = (name: string) => {
     router.push({ path: '/articles', query: { tag: name } });
 };
+
+// 导航卡片外链
+const navLinks = [
+    { name: '关于我', url: 'https://about.aoralsfout.top/', domain: 'about.aoralsfout.top' },
+    { name: 'Kisaki', url: 'https://kisaki.aoralsfout.top/', domain: 'kisaki.aoralsfout.top' },
+    { name: '音乐精选', url: 'https://radio.aoralsfout.top/', domain: 'radio.aoralsfout.top' },
+];
 
 const loadSidebarData = async () => {
     try {
@@ -483,5 +509,54 @@ onUnmounted(() => {
 .tag-chip.active {
     color: var(--text-on-color);
     background: var(--color-primary);
+}
+
+/* ===== 导航卡片 ===== */
+.nav-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.25rem 0;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: var(--radius-medium);
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: background-color 0.15s ease;
+}
+
+.nav-link:hover {
+    background-color: var(--bg-secondary);
+}
+
+.nav-link-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.nav-link-domain {
+    flex: 1;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nav-link-arrow {
+    width: 14px;
+    height: 14px;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+    transition: color 0.15s ease;
+}
+
+.nav-link:hover .nav-link-arrow {
+    color: var(--color-primary);
 }
 </style>

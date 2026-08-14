@@ -14,6 +14,7 @@
     width: 100%;
 
     display: flex;
+    flex-shrink: 0;
     flex-direction: column;
     overflow: hidden;
 
@@ -21,9 +22,9 @@
     border-radius: var(--radius-small);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 
-    transition: background-color 0.2s ease-in-out,border-radius 0.2s ease-in-out;
+    transition: background-color 0.2s ease-in-out, border-radius 0.2s ease-in-out;
 
-    >.card-header{
+    >.card-header {
         position: relative;
         padding: 10px 10px 10px 20px;
 
@@ -32,7 +33,7 @@
 
         border-bottom: 1px dashed var(--color-primary);
 
-        &::after{
+        &::after {
             content: '';
             position: absolute;
             top: 10px;

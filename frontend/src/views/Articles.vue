@@ -21,11 +21,14 @@
     </div>
 
     <div class="content">
-      <div v-if="loading" class="state">加载中...</div>
-      <div v-else-if="error" class="state error">{{ error }}</div>
+      <!-- 首次加载（无内容时）才显示整块占位 -->
+      <div v-if="loading && articles.length === 0" class="state">加载中...</div>
+      <div v-else-if="error && articles.length === 0" class="state error">{{ error }}</div>
       <template v-else>
+        <div v-if="error" class="inline-error">{{ error }}</div>
+
         <!-- Article list -->
-        <div v-if="articles.length" class="list">
+        <div v-if="articles.length" class="list" :class="{ dimmed: loading }">
           <ArticleCard v-for="a in articles" :key="a.id" :article="a" />
         </div>
         <div v-else class="state">暂无文章</div>
@@ -233,7 +236,22 @@ watch(
 }
 
 .content {
-  /* padding: 1rem; */
+  /* 首次加载占位时保留一定高度，减少下方评论区的跳动 */
+  min-height: 12rem;
+}
+
+/* 更新中：旧列表保留并降透明度，防止点击旧内容 */
+.list.dimmed {
+  opacity: 0.45;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.inline-error {
+  padding: 0.5rem 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #f5222d;
 }
 
 .state {
@@ -244,15 +262,6 @@ watch(
 
 .state.error {
   color: #f5222d;
-}
-
-.featured {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px dashed var(--border-color);
 }
 
 .list {
