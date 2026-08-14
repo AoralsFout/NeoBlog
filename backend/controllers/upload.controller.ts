@@ -150,7 +150,7 @@ export const uploadAvatar = async (req: Request, res: Response) => {
         const oldAvatar = currentUser?.avatar;
 
         // 更新用户头像（存储相对路径到数据库）
-        const user = await userService.updateUserAvatar(payload.userId, relativePath);
+        const user = await userService.updateUserAvatar(payload.userId, '/' + relativePath);
 
         // 如果用户有旧头像且不是默认头像，删除旧头像文件
         if (oldAvatar && !oldAvatar.includes('default-avatar')) {

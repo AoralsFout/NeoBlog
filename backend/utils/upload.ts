@@ -143,7 +143,7 @@ export const deleteFile = (filepath: string): Promise<void> => {
         // 正常URL路径，相对于public目录
         localPath = path.join(publicDir, urlPath);
       }
-    } else if (filepath.startsWith('uploads/')) {
+    } else if (filepath.startsWith('/uploads/')) {
       localPath = path.join(uploadDir, path.basename(filepath));
     } else if (path.isAbsolute(filepath)) {
       // 如果是绝对路径，直接使用

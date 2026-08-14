@@ -16,7 +16,7 @@
 
                 <div v-else class="user-menu">
                     <div class="user-avatar" @click="toggleUserMenu">
-                        <img v-if="userStore.currentUser?.avatar" :src="'/' + userStore.currentUser.avatar" alt="用户头像"
+                        <img v-if="userStore.currentUser?.avatar" :src="userStore.currentUser.avatar" alt="用户头像"
                             class="avatar-img" />
                         <div v-else class="avatar-placeholder">
                             {{ userStore.currentUser?.username?.charAt(0).toUpperCase() || 'U' }}
@@ -27,7 +27,7 @@
                         <div v-if="showUserMenu" class="user-dropdown" @click.stop>
                             <div class="dropdown-header">
                                 <div class="dropdown-avatar">
-                                    <img v-if="userStore.currentUser?.avatar" :src="'/' + userStore.currentUser.avatar"
+                                    <img v-if="userStore.currentUser?.avatar" :src="userStore.currentUser.avatar"
                                         alt="用户头像" />
                                     <div v-else class="dropdown-avatar-placeholder">
                                         {{ userStore.currentUser?.username?.charAt(0).toUpperCase() || 'U' }}

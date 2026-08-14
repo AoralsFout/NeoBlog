@@ -12,7 +12,7 @@
           <h1 class="title">{{ article.title }}</h1>
           <div class="meta">
             <span class="author" v-if="article.author">
-              <img v-if="article.author.avatar" :src="'/' + article.author.avatar" class="author-avatar" />
+              <img v-if="article.author.avatar" :src="article.author.avatar" class="author-avatar" />
               {{ article.author.username }}
             </span>
             <span class="date">{{ formatDate(article.created_at) }}</span>

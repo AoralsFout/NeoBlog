@@ -210,7 +210,10 @@ export const updateUser = async (req: Request, res: Response) => {
     const updateData: any = {};
     if (username) updateData.username = username;
     if (email) updateData.email = email;
-    if (avatar) updateData.avatar = avatar;
+    if (avatar) {
+      // TODO:删除旧头像文件
+      updateData.avatar = avatar;
+    }
     if (role && payload.role === 'admin') updateData.role = role;
     if (status && payload.role === 'admin') updateData.status = status;
 
