@@ -111,11 +111,11 @@ onUnmounted(() => {
 .FooterContainer {
     margin-top: 2rem;
     overflow: hidden;
-    background-image: url('/rail-on-grass.png');
+    background-image: url('/bg.png');
     background-size: contain;
     background-position: center;
     background-repeat: repeat;
-    box-shadow: inset 0 0 6px 10px rgba(0, 0, 0, 0.3);
+    box-shadow: inset 0 0 5px 5px rgba(0, 0, 0, 0.4);
     z-index: 1;
 }
 
