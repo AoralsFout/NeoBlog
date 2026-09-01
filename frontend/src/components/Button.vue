@@ -71,6 +71,12 @@ const handleClick = (event: MouseEvent) => {
     user-select: none;
 }
 
+.neo-btn:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    box-shadow: var(--focus-ring);
+}
+
 .neo-btn:disabled,
 .neo-btn.is-disabled {
     opacity: 0.6;

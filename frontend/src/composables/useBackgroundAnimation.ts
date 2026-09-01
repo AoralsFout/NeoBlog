@@ -12,15 +12,18 @@ export function useBackgroundAnimation(wallpapersRef: Ref<HTMLDivElement | null>
     let angle = 0
     let animationFrameId: number | undefined = undefined
 
-    const initWallpaperSwitcher = () => {
+    const collectWallpaperElements = () => {
         if (wallpapersRef.value) {
             images.value = Array.from(wallpapersRef.value.querySelectorAll('img'))
         }
 
-        // 设置初始图片
         if (images.value[activeIndex.value]) {
             images.value[activeIndex.value]!.classList.add('active')
         }
+    }
+
+    const initWallpaperSwitcher = () => {
+        collectWallpaperElements()
 
         // 每15秒切换一次（可根据需要调整）
         intervalId = setInterval(switchWallpaper, 15000)
@@ -81,9 +84,9 @@ export function useBackgroundAnimation(wallpapersRef: Ref<HTMLDivElement | null>
         let speed = 1
         // speed扰动
         speed = speed + Math.cos(angle) * Math.sin(angle)
-        const radius = 10
+        const radius = 6
         const position: [number, number] = [radius * Math.cos(angle) * speed, radius * Math.sin(angle) * speed]
-        angle += 0.01
+        angle += 0.002
         // 壁纸动画
         if (wallpapersRef.value) {
             wallpapersRef.value.style.transform = `
@@ -103,6 +106,14 @@ export function useBackgroundAnimation(wallpapersRef: Ref<HTMLDivElement | null>
     }
 
     const start = () => {
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        const compactViewport = window.innerWidth <= 768
+
+        if (reduceMotion || compactViewport) {
+            collectWallpaperElements()
+            return
+        }
+
         initWallpaperSwitcher()
         startAnimationLoop()
     }

@@ -64,7 +64,7 @@ const router = createRouter({
 })
 
 // 全局前置守卫
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to) => {
   const userStore = useUserStore()
 
   if (to.meta.requiresAdmin) {
@@ -73,12 +73,9 @@ router.beforeEach(async (to, from, next) => {
       await userStore.initUser()
     }
     if (!userStore.isAuthenticated || !userStore.isAdmin) {
-      next('/')
-      return
+      return '/'
     }
   }
-
-  next()
 })
 
 export default router

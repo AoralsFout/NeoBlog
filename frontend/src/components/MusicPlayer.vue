@@ -299,7 +299,8 @@
             </div>
             <img :src="currentMusic.coverUrl" alt="" class="music-box-bg">
         </div>
-        <div class="music-box-button" @click="toggleMusicBox">
+        <button class="music-box-button" type="button" :aria-expanded="isMusicBoxOpen"
+            :aria-label="isMusicBoxOpen ? '收起音乐播放器' : '展开音乐播放器'" @click="toggleMusicBox">
             <div class="music-box-button-icon" ref="musicBoxButtonIcon">
                 <svg fill="#ffffff" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"
                     class="music-box-button-icon-img" ref="musicBoxButtonIconImg">
@@ -313,7 +314,7 @@
                 </svg>
             </div>
             <img :src="currentMusic.coverUrl" alt="" class="music-box-button-bg">
-        </div>
+        </button>
     </div>
     <audio ref="audio" src="" nocontrols></audio>
 </template>
@@ -556,10 +557,131 @@ const parseLyrics = (lyricsText: string): LyricItem[] => {
 
 const audio = ref<HTMLAudioElement | null>(null)
 
+/**
+ * 系统媒体控制
+ * 将网页播放器同步到操作系统的媒体面板、锁屏界面和硬件媒体按键。
+ */
+const mediaSessionActions: MediaSessionAction[] = [
+    'play',
+    'pause',
+    'previoustrack',
+    'nexttrack',
+    'seekbackward',
+    'seekforward',
+    'seekto',
+    'stop',
+]
+
+const hasMediaSession = () => 'mediaSession' in navigator && typeof MediaMetadata !== 'undefined'
+
+const updateMediaSessionMetadata = () => {
+    if (!hasMediaSession() || !currentMusic.value) return
+
+    const artworkUrl = new URL(currentMusic.value.coverUrl, window.location.href).href
+    navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentMusic.value.title,
+        artist: currentMusic.value.author,
+        album: currentMusic.value.album,
+        artwork: [{ src: artworkUrl, type: 'image/jpeg' }],
+    })
+}
+
+const updateMediaSessionPlaybackState = () => {
+    if (!hasMediaSession() || !audio.value) return
+    navigator.mediaSession.playbackState = audio.value.paused ? 'paused' : 'playing'
+}
+
+const updateMediaSessionPosition = () => {
+    if (!hasMediaSession() || !audio.value) return
+
+    const mediaDuration = audio.value.duration
+    if (!Number.isFinite(mediaDuration) || mediaDuration <= 0) return
+
+    try {
+        navigator.mediaSession.setPositionState({
+            duration: mediaDuration,
+            playbackRate: audio.value.playbackRate || 1,
+            position: Math.min(Math.max(audio.value.currentTime, 0), mediaDuration),
+        })
+    } catch {
+        // 个别浏览器只实现了部分 Media Session 能力。
+    }
+}
+
+const seekFromMediaSession = (position: number) => {
+    if (!audio.value || !Number.isFinite(audio.value.duration)) return
+
+    const target = Math.min(Math.max(position, 0), audio.value.duration)
+    audio.value.currentTime = target
+    currentTime.value = target
+    updateProgressBar()
+    updateMediaSessionPosition()
+}
+
+const registerMediaSessionAction = (action: MediaSessionAction, handler: MediaSessionActionHandler | null) => {
+    try {
+        navigator.mediaSession.setActionHandler(action, handler)
+    } catch {
+        // 忽略当前浏览器尚未支持的单个系统媒体动作。
+    }
+}
+
+const setupMediaSession = () => {
+    if (!hasMediaSession()) return
+
+    registerMediaSessionAction('play', () => {
+        audio.value?.play().catch(() => {})
+    })
+    registerMediaSessionAction('pause', () => audio.value?.pause())
+    registerMediaSessionAction('previoustrack', prevMusic)
+    registerMediaSessionAction('nexttrack', nextMusic)
+    registerMediaSessionAction('seekbackward', (details) => {
+        if (!audio.value) return
+        seekFromMediaSession(audio.value.currentTime - (details.seekOffset ?? 10))
+    })
+    registerMediaSessionAction('seekforward', (details) => {
+        if (!audio.value) return
+        seekFromMediaSession(audio.value.currentTime + (details.seekOffset ?? 10))
+    })
+    registerMediaSessionAction('seekto', (details) => {
+        if (details.seekTime === undefined) return
+        seekFromMediaSession(details.seekTime)
+    })
+    registerMediaSessionAction('stop', () => {
+        if (!audio.value) return
+        audio.value.pause()
+        seekFromMediaSession(0)
+    })
+}
+
+const clearMediaSession = () => {
+    if (!hasMediaSession()) return
+
+    mediaSessionActions.forEach((action) => registerMediaSessionAction(action, null))
+    navigator.mediaSession.metadata = null
+    navigator.mediaSession.playbackState = 'none'
+    try {
+        navigator.mediaSession.setPositionState()
+    } catch {
+        // 无需为未实现位置状态的浏览器额外处理。
+    }
+}
+
+const handleMediaSessionPlay = () => {
+    updateMediaSessionPlaybackState()
+    updateMediaSessionPosition()
+}
+
+const handleMediaSessionPause = () => {
+    updateMediaSessionPlaybackState()
+    updateMediaSessionPosition()
+}
+
 // 加载音乐
 const loadMusic = () => {
     if (!audio.value || !currentMusic.value) return
     audio.value.src = '/musics/music/' + currentMusic.value.id + '.' + currentMusic.value.format;
+    updateMediaSessionMetadata()
     // 浏览器自动播放策略可能拒绝play()，忽略该错误（用户点击播放按钮时才真正开始）
     audio.value.play().catch(() => {});
     audio.value.volume = volume.value;
@@ -572,6 +694,13 @@ const switchMusic = (index: number) => {
     }
     currentMusic.value = musicList.value[index] as MusicItem;
     currentTime.value = 0;
+    if (hasMediaSession()) {
+        try {
+            navigator.mediaSession.setPositionState()
+        } catch {
+            // 切歌时无法清空位置状态不影响正常播放。
+        }
+    }
     getLyricsData();
     nextTick(() => {
         applyColor();
@@ -587,7 +716,7 @@ const switchMusic = (index: number) => {
 const playPauseMusic = () => {
     if (!audio.value) return
     if (audio.value.paused) {
-        audio.value.play();
+        audio.value.play().catch(() => {});
     } else {
         audio.value.pause();
     }
@@ -792,6 +921,9 @@ const handleLoadedMetadata = () => {
     }
     resumePaused.value = null
     updateProgressBar()
+    updateMediaSessionMetadata()
+    updateMediaSessionPlaybackState()
+    updateMediaSessionPosition()
 }
 
 // 处理进度条点击事件（直接跳转）
@@ -880,6 +1012,7 @@ const handleTimeUpdate = () => {
         }
         bufferedRanges.value = ranges
         updateProgressBar()
+        updateMediaSessionPosition()
     }
 
     let activeIndex = -1
@@ -1126,7 +1259,9 @@ const drawAudio = (freData: Uint8Array) => {
 const scale = ref<number>(1);
 const updateScale = () => {
     const width = window.innerWidth
-    scale.value = width / 1000 > 1 ? 1 : width / 1000;
+    scale.value = width <= 768
+        ? Math.min(1, Math.max(0.35, (width - 56) / 800))
+        : Math.min(1, width / 1000);
 
     if (musicBox.value) {
         musicBox.value.style.transform = !isMusicBoxOpen.value ? 'translateX(' + 800 * scale.value + 'px) scale(' + scale.value + ')' : 'translateX(0px) scale(' + scale.value + ')';
@@ -1135,6 +1270,8 @@ const updateScale = () => {
 
 // 在组件挂载时添加音频事件监听
 onMounted(() => {
+    setupMediaSession()
+
     // 初始化播放列表
     loadMusicList()
 
@@ -1151,6 +1288,8 @@ onMounted(() => {
         // 播放/暂停时控制频谱动画循环，避免暂停时持续消耗CPU
         audio.value.addEventListener('play', startAudioAnimation)
         audio.value.addEventListener('pause', stopAudioAnimation)
+        audio.value.addEventListener('play', handleMediaSessionPlay)
+        audio.value.addEventListener('pause', handleMediaSessionPause)
     }
     // 初始化音频分析器（频谱动画仅在播放时运行）
     if (audio.value) {
@@ -1194,6 +1333,8 @@ onUnmounted(() => {
         audio.value.removeEventListener('ended', handleAudioEnded)
         audio.value.removeEventListener('play', startAudioAnimation)
         audio.value.removeEventListener('pause', stopAudioAnimation)
+        audio.value.removeEventListener('play', handleMediaSessionPlay)
+        audio.value.removeEventListener('pause', handleMediaSessionPause)
     }
     // 移除歌词容器滚动事件监听
     if (lyricsContainer.value) {
@@ -1211,6 +1352,7 @@ onUnmounted(() => {
     }
     // 移除页面可见性事件监听
     document.removeEventListener('visibilitychange', handleVisibilityChange)
+    clearMediaSession()
 })
 </script>
 
@@ -1260,11 +1402,32 @@ onUnmounted(() => {
     width: 40px;
     height: 70px;
     overflow: hidden;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
     border-radius: var(--radius-medium) 0px 0px var(--radius-medium);
     border: 1px solid var(--border-color);
     border-right: none;
 
     transition: border-radius 0.2s ease-in-out;
+}
+
+@media (max-width: 768px) {
+    .music-container {
+        right: 0;
+        bottom: 20px;
+    }
+
+    .music-box {
+        box-shadow: var(--shadow-hover);
+    }
+
+    .music-box-button {
+        width: 44px;
+        height: 76px;
+        left: -44px;
+    }
 }
 
 .music-box-button-icon {

@@ -23,7 +23,10 @@
     <div class="content">
       <!-- 首次加载（无内容时）才显示整块占位 -->
       <div v-if="loading && articles.length === 0" class="state">加载中...</div>
-      <div v-else-if="error && articles.length === 0" class="state error">{{ error }}</div>
+      <div v-else-if="error && articles.length === 0" class="state error" role="alert">
+        <strong>{{ error }}</strong>
+        <button type="button" @click="loadArticles">重新加载</button>
+      </div>
       <template v-else>
         <div v-if="error" class="inline-error">{{ error }}</div>
 
@@ -106,7 +109,8 @@ async function loadArticles() {
       pagination.value = listRes.pagination;
     }
   } catch (e: any) {
-    error.value = e.message || '加载失败';
+    console.error('加载文章失败:', e);
+    error.value = '文章暂时没有加载出来';
   } finally {
     loading.value = false;
   }
@@ -261,7 +265,24 @@ watch(
 }
 
 .state.error {
-  color: #f5222d;
+  display: grid;
+  justify-items: center;
+  gap: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.state.error strong {
+  color: var(--text-primary);
+}
+
+.state.error button {
+  min-height: 40px;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-small);
+  background: transparent;
+  color: var(--color-primary);
+  cursor: pointer;
 }
 
 .list {

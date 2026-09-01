@@ -1,7 +1,10 @@
 <template>
   <div class="router-container">
     <div v-if="loading" class="state">加载中...</div>
-    <div v-else-if="error" class="state error">{{ error }}</div>
+    <div v-else-if="error" class="state error" role="alert">
+      <strong>{{ error }}</strong>
+      <button type="button" @click="loadArticle">重新加载</button>
+    </div>
     <div v-else-if="!article" class="state">文章不存在</div>
     <template v-else>
       <div class="article-container">
@@ -152,7 +155,8 @@ async function loadArticle() {
       error.value = '文章不存在';
     }
   } catch (e: any) {
-    error.value = e.message || '加载失败';
+    console.error('加载文章失败:', e);
+    error.value = '这篇文章暂时没有加载出来';
   } finally {
     loading.value = false;
   }
@@ -179,24 +183,43 @@ onBeforeUnmount(() => articleStore.clearHeadings());
   padding: 3rem;
   text-align: center;
   color: var(--text-secondary);
-  background-color: var(--bg-primary);
-  border-radius: var(--radius-small);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-medium);
+  box-shadow: var(--shadow-card);
   transition: background-color 0.2s ease-in-out, border-radius 0.2s ease-in-out;
 }
 
 .state.error {
-  color: #f5222d;
+  display: grid;
+  justify-items: center;
+  gap: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.state.error strong {
+  color: var(--text-primary);
+}
+
+.state.error button {
+  min-height: 40px;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-small);
+  background: transparent;
+  color: var(--color-primary);
+  cursor: pointer;
 }
 
 .article-header {
-  padding: 2rem 2rem 0;
+  padding: 1.5rem 1.5rem 0;
 }
 
 .article-container {
-  background-color: var(--bg-primary);
-  border-radius: var(--radius-small);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-medium);
+  box-shadow: var(--shadow-card);
   transition: background-color 0.2s ease-in-out, border-radius 0.2s ease-in-out;
 }
 
@@ -218,9 +241,11 @@ onBeforeUnmount(() => articleStore.clearHeadings());
 }
 
 .title {
-  font-size: 1.8rem;
+  font-size: clamp(1.9rem, 4vw, 2.8rem);
   font-weight: bold;
-  margin-bottom: 1rem;
+  margin: 0 0 1rem;
+  line-height: 1.2;
+  letter-spacing: -0.05em;
   color: var(--text-primary);
 }
 
@@ -263,11 +288,15 @@ onBeforeUnmount(() => articleStore.clearHeadings());
 }
 
 .article-content {
-  padding: 1rem 2rem;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0.75rem 1.5rem 2rem;
+  font-size: 1.02rem;
 }
 
 .article-footer {
-  padding: 1rem 2rem;
+  padding: 0.9rem 1.5rem;
   border-top: 1px dashed var(--border-color);
 }
 
@@ -327,6 +356,30 @@ onBeforeUnmount(() => articleStore.clearHeadings());
   width: 100%;
   border-collapse: collapse;
   margin: 1rem 0;
+}
+
+@media (max-width: 768px) {
+  .article-header,
+  .article-content,
+  .article-footer {
+    padding-right: 1.1rem;
+    padding-left: 1.1rem;
+  }
+
+  .article-header {
+    padding-top: 1.2rem;
+  }
+
+  .article-content {
+    padding-bottom: 2rem;
+    font-size: 0.98rem;
+  }
+
+  .markdown-body :deep(table) {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
 }
 
 .markdown-body :deep(th),

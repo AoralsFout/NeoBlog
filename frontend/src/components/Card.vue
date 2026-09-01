@@ -18,9 +18,10 @@
     flex-direction: column;
     overflow: hidden;
 
-    background-color: var(--bg-primary);
-    border-radius: var(--radius-small);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    background-color: var(--surface-card);
+    border: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
+    border-radius: var(--radius-medium);
+    box-shadow: var(--shadow-card);
 
     transition: background-color 0.2s ease-in-out, border-radius 0.2s ease-in-out;
 
@@ -31,7 +32,8 @@
         font-size: 16px;
         font-weight: bold;
 
-        border-bottom: 1px dashed var(--color-primary);
+        border-bottom: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
+        font-family: var(--font-display);
 
         &::after {
             content: '';

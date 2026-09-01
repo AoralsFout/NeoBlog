@@ -6,17 +6,30 @@
             <div class="fliter" :class="{ 'dark': theme === 'dark' }"></div>
             <div class="wallpapers" ref="wallpapers">
                 <!-- 添加两个图片容器用于交叉淡入淡出 -->
-                <img class="wallpaper active" src="https://t.alcy.cc/pc/" />
-                <img class="wallpaper" />
+                <img class="wallpaper active" src="https://t.alcy.cc/pc/" alt="" aria-hidden="true" />
+                <img class="wallpaper" alt="" aria-hidden="true" />
             </div>
             <div class="header-content">
-                <h1>NeoBlog</h1>
+                <div class="hero-copy">
+                    <p class="hero-kicker">AORALSFOUT'S PERSONAL STATION</p>
+                    <h1>在代码、音乐与日常之间，<br><span>记录仍在发生的事。</span></h1>
+                    <p class="hero-description">这里收藏技术笔记、生活切片，以及循环播放过很多遍的旋律。</p>
+                    <div class="hero-actions">
+                        <a class="hero-primary" href="#content-start">开始阅读</a>
+                        <a class="hero-secondary" href="https://github.com/AoralsFout" target="_blank"
+                            rel="noopener noreferrer">GitHub ↗</a>
+                    </div>
+                </div>
+                <div class="hero-stamp" aria-hidden="true">
+                    <span>NEO</span>
+                    <small>BLOG / 26</small>
+                </div>
             </div>
             <div class="dynamic">
                 <canvas ref="waveCanvas"></canvas>
             </div>
         </div>
-        <div class="content">
+        <div id="content-start" class="content">
             <div class="layout" :class="`layout-${effectiveLayout}`">
                 <div class="left">
                     <Card class="card">
@@ -26,14 +39,14 @@
                         <template v-slot:body>
                             <div class="card-body about">
                                 <div class="avatar">
-                                    <img src="https://q1.qlogo.cn/g?b=qq&nk=2168842137&s=640" alt="">
+                                    <img src="https://q1.qlogo.cn/g?b=qq&nk=2168842137&s=640" alt="AoralsFout 的头像">
                                 </div>
                                 <div class="title">AoralsFout</div>
                                 <div class="desc">
                                     <p>泥嚎！很高兴见到泥 ^ω^。我是一名普通的计科学生，欢迎来到我的博客！</p>
                                 </div>
                                 <div class="links">
-                                    <a class="link" href="https://github.com/AoralsFout" target="_blank">
+                                    <a class="link" href="https://github.com/AoralsFout" target="_blank" rel="noopener noreferrer">
                                         <svg width="256px" height="250px" viewBox="0 0 256 250" version="1.1"
                                             xmlns="http://www.w3.org/2000/svg"
                                             xmlns:xlink="http://www.w3.org/1999/xlink" preserveAspectRatio="xMidYMid">
@@ -47,7 +60,7 @@
                                             <span>Github</span>
                                         </div>
                                     </a>
-                                    <a class="link" href="https://space.bilibili.com/345054137" target="_blank">
+                                    <a class="link" href="https://space.bilibili.com/345054137" target="_blank" rel="noopener noreferrer">
                                         <svg width="18" height="18" viewBox="0 0 18 18" fill="none"
                                             xmlns="http://www.w3.org/2000/svg">
                                             <path fill-rule="evenodd" clip-rule="evenodd"
@@ -59,7 +72,7 @@
                                         </div>
                                     </a>
                                     <a class="link" href="https://steamcommunity.com/profiles/76561199198280801/"
-                                        target="_blank">
+                                        target="_blank" rel="noopener noreferrer">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34"
                                             viewBox="0 0 34 34">
                                             <path
@@ -132,11 +145,13 @@
                             <component :is="Component" />
                         </transition>
                     </router-view>
-                    <Footer />
                 </div>
                 <div class="right" v-if="showRight">
                     <RightSidebar />
                 </div>
+            </div>
+            <div class="footer-shell">
+                <Footer />
             </div>
         </div>
     </div>
@@ -240,7 +255,8 @@ onBeforeUnmount(() => {
 
 .header {
     width: 100%;
-    height: 60vh;
+    height: min(720px, 68vh);
+    min-height: 540px;
     background-color: var(--color-primary);
     position: relative;
     z-index: 0;
@@ -254,7 +270,7 @@ onBeforeUnmount(() => {
     width: 100%;
     height: 100px;
     bottom: 0;
-    z-index: 4;
+    z-index: 3;
 }
 
 .dynamic canvas {
@@ -267,22 +283,16 @@ onBeforeUnmount(() => {
     position: absolute;
     width: 100%;
     height: 100%;
-    z-index: 3;
-    /* 背景模糊效果 */
-    backdrop-filter: blur(30px);
-    /* 径向渐变遮罩实现光圈效果 - 中心清晰，边缘模糊 */
-    -webkit-mask-image: radial-gradient(circle at center,
-            transparent 10%,
-            /* 中心30%区域完全透明（不模糊） */
-            black 80%
-            /* 从30%到70%过渡到完全模糊 */
-        );
-    mask-image: radial-gradient(circle at center,
-            transparent 10%,
-            black 80%);
+    z-index: 2;
+    pointer-events: none;
+    background:
+        linear-gradient(90deg, rgba(8, 12, 23, 0.82) 0%, rgba(8, 12, 23, 0.55) 48%, rgba(8, 12, 23, 0.18) 100%),
+        linear-gradient(0deg, rgba(8, 12, 23, 0.7) 0%, transparent 42%);
 
     &.dark {
-        background-color: rgba(0, 0, 0, 0.6);
+        background:
+            linear-gradient(90deg, rgba(5, 7, 13, 0.9) 0%, rgba(5, 7, 13, 0.62) 52%, rgba(5, 7, 13, 0.28) 100%),
+            linear-gradient(0deg, rgba(5, 7, 13, 0.78) 0%, transparent 44%);
     }
 }
 
@@ -294,7 +304,7 @@ onBeforeUnmount(() => {
     height: 100%;
     transition: transform 0.5s ease-out;
     overflow: hidden;
-    scale: 1.1;
+    scale: 1.04;
 }
 
 .wallpaper {
@@ -323,30 +333,132 @@ onBeforeUnmount(() => {
     width: 100%;
     height: 100%;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
     color: white;
-    text-align: center;
-    z-index: 1;
+    z-index: 4;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 7rem 3rem 6rem;
+    right: 0;
+}
+
+.hero-copy {
+    width: min(780px, 72%);
+    margin-right: auto;
+}
+
+.hero-kicker,
+.hero-stamp,
+.hero-actions {
+    font-family: var(--font-display);
+}
+
+.hero-kicker {
+    margin: 1.4rem 0 0.65rem;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
 }
 
 .header-content h1 {
-    font-size: 3rem;
-    margin-bottom: 1rem;
+    max-width: 760px;
+    margin: 0;
+    font-size: clamp(2.6rem, 5.2vw, 5rem);
+    font-weight: 750;
+    line-height: 1.12;
+    letter-spacing: -0.07em;
+    text-wrap: balance;
+
+    span {
+        color: color-mix(in srgb, var(--color-tertiary) 78%, white);
+        white-space: nowrap;
+    }
+}
+
+.hero-description {
+    max-width: 580px;
+    margin: 1.25rem 0 0;
+    color: rgba(255, 255, 255, 0.78);
+    font-size: clamp(0.96rem, 1.4vw, 1.08rem);
+}
+
+.hero-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.7rem;
+    position: relative;
+    z-index: 1;
+
+    a {
+        display: inline-flex;
+        min-height: 44px;
+        align-items: center;
+        justify-content: center;
+        padding: 0.65rem 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.38);
+        border-radius: var(--radius-small);
+        color: white;
+        font-size: 0.82rem;
+        text-decoration: none;
+        transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+
+        &:hover {
+            transform: translateY(-2px);
+        }
+    }
+
+    .hero-primary {
+        border-color: var(--color-primary);
+        background: var(--color-primary);
+    }
+
+    .hero-secondary {
+        background: rgba(10, 16, 30, 0.24);
+        backdrop-filter: blur(8px);
+    }
+}
+
+.hero-stamp {
+    position: absolute;
+    right: 3rem;
+    bottom: 7.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    opacity: 0.72;
+
+    span {
+        font-size: clamp(3rem, 7vw, 7rem);
+        font-weight: 800;
+        line-height: 0.8;
+        letter-spacing: -0.12em;
+        -webkit-text-stroke: 1px rgba(255, 255, 255, 0.62);
+        color: transparent;
+    }
+
+    small {
+        margin-top: 0.8rem;
+        letter-spacing: 0.18em;
+    }
 }
 
 .content {
     position: relative;
     z-index: 1;
     width: 100%;
-    padding: 2rem;
+    padding: 2.5rem 2rem 2rem;
     box-sizing: border-box;
 }
 
 .layout {
     display: grid;
     gap: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.footer-shell {
     max-width: 1400px;
     margin: 0 auto;
 }
@@ -369,9 +481,61 @@ onBeforeUnmount(() => {
 
 /* 手机屏幕单栏 */
 @media (max-width: 768px) {
+    .header {
+        height: 48vh;
+        min-height: 460px;
+    }
+
+    .header-content {
+        padding: 8rem 1.25rem 4.5rem;
+    }
+
+    .hero-copy {
+        width: 100%;
+    }
+
+    .hero-kicker {
+        font-size: 0.62rem;
+    }
+
+    .header-content h1 {
+        font-size: clamp(2rem, 9vw, 3rem);
+        letter-spacing: -0.06em;
+    }
+
+    .header-content h1 br {
+        display: none;
+    }
+
+    .header-content h1 span {
+        white-space: normal;
+    }
+
+    .hero-description {
+        margin-top: 0.8rem;
+        font-size: 0.9rem;
+    }
+
+    .hero-actions {
+        margin-top: 1.1rem;
+    }
+
+    .hero-stamp {
+        display: none;
+    }
+
+    .dynamic {
+        height: 64px;
+    }
+
+    .content {
+        padding: 1.25rem 1rem 1rem;
+    }
+
     .layout {
         grid-template-columns: 1fr;
         grid-template-areas: "main" "left" "right";
+        gap: 1.25rem;
     }
 
     .layout .right {
@@ -430,7 +594,8 @@ onBeforeUnmount(() => {
     align-items: center;
 
     >.avatar {
-        width: 100%;
+        width: min(180px, 100%);
+        aspect-ratio: 1;
 
         >img {
             width: 100%;

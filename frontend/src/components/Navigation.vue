@@ -1,27 +1,33 @@
 <template>
-    <div class="NavigationContainer">
-        <div class="navigation-bar">
-            <div class="logo">
-                <img :src="`${URL}/images/logo.png`" alt="" srcset="">
+    <div class="NavigationContainer" :class="{ 'menu-open': showMobileNav }">
+        <nav class="navigation-bar" aria-label="主导航">
+            <router-link to="/" class="brand" aria-label="NeoBlog 首页" @click="closeMobileNav">
+                <span class="brand-mark" aria-hidden="true">N</span>
+                <span class="brand-copy">
+                    <strong>NeoBlog</strong>
+                    <small>PERSONAL SIGNAL</small>
+                </span>
+            </router-link>
+
+            <div id="primary-navigation" class="selections" :class="{ open: showMobileNav }">
+                <router-link to="/articles" active-class="active" @click="closeMobileNav"><span>文章</span></router-link>
+                <router-link to="/settings" active-class="active" @click="closeMobileNav"><span>设置</span></router-link>
             </div>
-            <div class="selections">
-                <router-link to="/"><span>首页</span></router-link>
-                <router-link to="/articles" active-class="active"><span>文章列表</span></router-link>
-                <router-link to="/settings" active-class="active"><span>设置</span></router-link>
-            </div>
+
             <div class="actions">
                 <div v-if="!userStore.isAuthenticated" class="auth-buttons">
                     <Button @click="goToLogin" size="md">登录</Button>
                 </div>
 
                 <div v-else class="user-menu">
-                    <div class="user-avatar" @click="toggleUserMenu">
+                    <button class="user-avatar" type="button" aria-label="打开用户菜单"
+                        :aria-expanded="showUserMenu" @click="toggleUserMenu">
                         <img v-if="userStore.currentUser?.avatar" :src="userStore.currentUser.avatar" alt="用户头像"
                             class="avatar-img" />
                         <div v-else class="avatar-placeholder">
                             {{ userStore.currentUser?.username?.charAt(0).toUpperCase() || 'U' }}
                         </div>
-                    </div>
+                    </button>
 
                     <transition name="fade" mode="out-in">
                         <div v-if="showUserMenu" class="user-dropdown" @click.stop>
@@ -63,17 +69,22 @@
                     </transition>
                 </div>
             </div>
-        </div>
+
+            <button class="mobile-menu-toggle" type="button" aria-label="切换导航菜单"
+                aria-controls="primary-navigation" :aria-expanded="showMobileNav" @click="toggleMobileNav">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </nav>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, onBeforeMount, Transition } from 'vue';
+import { ref, onMounted, onUnmounted, onBeforeMount } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/user';
 import Button from './Button.vue';
-
-const URL = import.meta.env.VITE_FRONTEND_BASE_URL;
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -81,6 +92,7 @@ const userStore = useUserStore();
 const scrollY = ref(0);
 const scrollRatio = ref(0);
 const showUserMenu = ref(false);
+const showMobileNav = ref(false);
 
 // 初始化用户状态
 onBeforeMount(async () => {
@@ -99,7 +111,16 @@ const updateScroll = () => {
 
 // 点击登录按钮
 const goToLogin = () => {
+    closeMobileNav();
     router.push('/login');
+};
+
+const toggleMobileNav = () => {
+    showMobileNav.value = !showMobileNav.value;
+};
+
+const closeMobileNav = () => {
+    showMobileNav.value = false;
 };
 
 // 切换用户菜单
@@ -124,6 +145,9 @@ const handleClickOutside = (event: MouseEvent) => {
     const target = event.target as HTMLElement;
     if (!target.closest('.user-menu')) {
         showUserMenu.value = false;
+    }
+    if (!target.closest('.NavigationContainer')) {
+        closeMobileNav();
     }
 };
 
@@ -155,19 +179,18 @@ onUnmounted(() => {
     opacity: 0;
 }
 
-/**
- * what fuck css ????
-*/
 .NavigationContainer {
     position: fixed;
-    width: calc(100vw - 20px * (1 - var(--scroll-ratio, 0)));
+    top: 0;
+    left: 0;
+    width: 100%;
     padding: calc(10px * (1 - var(--scroll-ratio, 0)));
     transition: width 0.2s ease-in-out, padding 0.2s ease-in-out;
     z-index: 9999;
 }
 
 .navigation-bar {
-    width: calc(90% + 10% * var(--scroll-ratio, 0) - 2rem);
+    width: calc(90% + 10% * var(--scroll-ratio, 0));
     max-width: calc(1200px * (1 - var(--scroll-ratio, 0)) + 100% * var(--scroll-ratio, 0));
     background-color: color-mix(in srgb, var(--bg-primary) calc(20% + 80% * var(--scroll-ratio, 0)), transparent);
     backdrop-filter: blur(10px);
@@ -177,12 +200,61 @@ onUnmounted(() => {
     justify-content: space-between;
     align-items: center;
     margin: 0 auto;
-    padding: 1rem;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    padding: 0.75rem 1rem;
+    border: 1px solid color-mix(in srgb, var(--border-color) 58%, transparent);
+    box-shadow: 0 12px 36px rgba(20, 28, 48, 0.12);
     z-index: 1;
     transform: scale(1);
 
     transition: background-color 0.2s ease-in-out, border-radius 0.2s ease-in-out, padding 0.2s ease-in-out, width 0.2s ease-in-out, max-width 0.2s ease-in-out;
+
+    >.brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.7rem;
+        min-width: 190px;
+        color: var(--text-primary);
+        text-decoration: none;
+        font-family: var(--font-display);
+
+        .brand-mark {
+            display: grid;
+            width: 38px;
+            height: 38px;
+            place-items: center;
+            border-radius: 10px 4px 10px 4px;
+            background: var(--color-primary);
+            color: var(--text-on-color);
+            font-size: 1.1rem;
+            font-weight: 800;
+            box-shadow: 5px 5px 0 color-mix(in srgb, var(--color-secondary) 34%, transparent);
+        }
+
+        .brand-copy {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.05;
+
+            strong {
+                font-size: 1rem;
+                letter-spacing: -0.03em;
+            }
+
+            small {
+                margin-top: 0.35rem;
+                width: max-content;
+                padding: 0.12rem 0.34rem;
+                border: 1px solid color-mix(in srgb, var(--border-color) 68%, transparent);
+                border-radius: 999px;
+                background: color-mix(in srgb, var(--bg-primary) 76%, transparent);
+                color: var(--text-primary);
+                font-size: 0.56rem;
+                font-weight: 700;
+                letter-spacing: 0.16em;
+                backdrop-filter: blur(5px);
+            }
+        }
+    }
 
     >.logo {
         width: 150px;
@@ -197,15 +269,17 @@ onUnmounted(() => {
 
     >.selections {
         display: flex;
-        gap: 1rem;
+        gap: 0.35rem;
 
         a {
             padding: 0.5rem;
             position: relative;
             color: var(--text-primary);
             text-decoration: none;
-            font-weight: bold;
-            font-size: 1rem;
+            border-radius: var(--radius-small);
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 0.9rem;
             user-select: none;
             transition: color 0.2s ease-in-out;
             z-index: 1;
@@ -215,33 +289,31 @@ onUnmounted(() => {
                 z-index: 1;
             }
 
-            &:hover::after {
-                height: 30%;
+            &:hover span {
+                color: var(--color-primary);
             }
 
-            &:hover span,
-            &.active span {
-                color: var(--text-on-color);
-                text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-            }
-
-            &:hover::after,
             &.active::after {
                 width: 100%;
+            }
+
+            &.active span {
+                color: var(--text-primary);
             }
 
             &::after {
                 content: '';
                 width: 0%;
-                height: 20%;
+                height: 2px;
                 position: absolute;
-                top: 50%;
+                top: auto;
+                bottom: 0.2rem;
                 left: 50%;
                 transform: translate(-50%, -50%);
                 background-color: var(--color-primary);
                 z-index: 0;
 
-                transition: background-color 0.2s ease-in-out, width 0.2s ease-in-out, height 0.2s ease-in-out;
+                transition: background-color 0.2s ease-in-out, width 0.2s ease-in-out;
             }
         }
     }
@@ -250,7 +322,7 @@ onUnmounted(() => {
         display: flex;
         justify-content: flex-end;
         align-items: center;
-        width: 200px;
+        min-width: 190px;
         gap: 1rem;
 
         .user-menu {
@@ -265,6 +337,8 @@ onUnmounted(() => {
             border-radius: 50%;
             overflow: hidden;
             cursor: pointer;
+            padding: 0;
+            background: transparent;
             border: 2px solid transparent;
             transition: border-color 0.2s ease;
 
@@ -408,6 +482,115 @@ onUnmounted(() => {
                 }
             }
         }
+    }
+}
+
+.mobile-menu-toggle {
+    display: none;
+    width: 42px;
+    height: 42px;
+    padding: 9px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-small);
+    background: var(--surface-card);
+    cursor: pointer;
+
+    span {
+        display: block;
+        width: 100%;
+        height: 2px;
+        margin: 4px 0;
+        border-radius: 99px;
+        background: var(--text-primary);
+        transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+}
+
+@media (max-width: 768px) {
+    .NavigationContainer {
+        width: 100%;
+        padding: 8px;
+    }
+
+    .navigation-bar {
+        width: 100%;
+        max-width: none;
+        padding: 0.6rem 0.7rem;
+        border-radius: var(--radius-medium);
+        background-color: color-mix(in srgb, var(--bg-primary) 88%, transparent);
+    }
+
+    .navigation-bar > .brand {
+        min-width: 0;
+        margin-right: auto;
+
+        .brand-mark {
+            width: 36px;
+            height: 36px;
+        }
+
+        .brand-copy small {
+            display: none;
+        }
+    }
+
+    .navigation-bar > .selections {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        left: 0;
+        display: grid;
+        gap: 0.35rem;
+        padding: 0.55rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-medium);
+        background: color-mix(in srgb, var(--bg-primary) 96%, transparent);
+        box-shadow: var(--shadow-card);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-8px);
+        transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+
+        &.open {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        a {
+            padding: 0.75rem 0.9rem;
+        }
+    }
+
+    .navigation-bar > .actions {
+        min-width: 0;
+        margin-left: 0.5rem;
+
+        .neo-btn {
+            padding: 0.45rem 0.75rem;
+        }
+
+        .user-dropdown {
+            right: -52px;
+            width: min(280px, calc(100vw - 32px));
+        }
+    }
+
+    .mobile-menu-toggle {
+        display: block;
+        margin-left: 0.45rem;
+    }
+
+    .menu-open .mobile-menu-toggle span:nth-child(1) {
+        transform: translateY(6px) rotate(45deg);
+    }
+
+    .menu-open .mobile-menu-toggle span:nth-child(2) {
+        opacity: 0;
+    }
+
+    .menu-open .mobile-menu-toggle span:nth-child(3) {
+        transform: translateY(-6px) rotate(-45deg);
     }
 }
 </style>

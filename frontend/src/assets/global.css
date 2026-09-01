@@ -1,12 +1,54 @@
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
 body {
     margin: 0;
     padding: 0;
-    font-family: 'Jetbrains Mono', 'Maple Mono CN', monospace;
+    font-family: var(--font-body);
     background-color: var(--bg-secondary);
     color: var(--text-primary);
     overflow-x: hidden;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
 
     transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out;
+}
+
+button,
+input,
+textarea,
+select {
+    font: inherit;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+code,
+pre {
+    font-family: var(--font-display);
+}
+
+a,
+button,
+[tabindex] {
+    -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
+    box-shadow: var(--focus-ring);
 }
 
 ::-webkit-scrollbar{
@@ -28,4 +70,19 @@ body {
 ::-webkit-scrollbar-thumb:hover{
     background: var(--color-secondary);
     transition: background 0.2s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
 }

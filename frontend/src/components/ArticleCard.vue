@@ -1,5 +1,6 @@
 <template>
-  <Card class="article-card" @click="goDetail">
+  <Card class="article-card" role="link" tabindex="0" :aria-label="`阅读文章：${article.title}`"
+    @click="goDetail" @keydown.enter="goDetail" @keydown.space.prevent="goDetail">
     <template #header>
       <div class="card-title">{{ article.title }}</div>
     </template>
@@ -63,7 +64,12 @@ function formatDate(dateStr: string): string {
 
 .article-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-hover);
+}
+
+.article-card:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
 }
 
 .card-title {
@@ -73,7 +79,7 @@ function formatDate(dateStr: string): string {
 }
 
 .card-body-content {
-  padding: 1rem;
+  padding: 0.8rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -81,7 +87,7 @@ function formatDate(dateStr: string): string {
 
 .cover {
   width: 100%;
-  max-height: 200px;
+  aspect-ratio: 16 / 7;
   overflow: hidden;
   border-radius: var(--radius-medium);
   display: flex;
@@ -99,6 +105,7 @@ function formatDate(dateStr: string): string {
   color: var(--text-secondary);
   font-size: 0.9rem;
   line-height: 1.6;
+  margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;

@@ -7,10 +7,10 @@ export function useWaveAnimation(waveCanvasRef: Ref<HTMLCanvasElement | null>) {
     let secondaryWaveTime = 0
     const waveAmplitude = 20
     const waveFrequency = 0.005
-    const waveSpeed = 0.05
+    const waveSpeed = 0.009
     const secondaryWaveAmplitude = 40       // 后方波浪振幅
     const secondaryWaveFrequency = 0.005    // 后方波浪频率
-    const secondaryWaveSpeed = 0.03         // 后方波浪速度
+    const secondaryWaveSpeed = 0.005         // 后方波浪速度
     const secondaryWavePhase = Math.PI / 2  // 初始相位差90度
 
     let animationFrameId: number | undefined = undefined
@@ -36,6 +36,9 @@ export function useWaveAnimation(waveCanvasRef: Ref<HTMLCanvasElement | null>) {
         if (!waveCanvasRef.value || !waveCtx) return
         const width = waveCanvasRef.value.clientWidth
         const height = waveCanvasRef.value.clientHeight
+        // 小屏画布高度较低时同步收缩振幅，确保波峰完整留在画布内。
+        const responsiveWaveAmplitude = Math.min(waveAmplitude, height * 0.25)
+        const responsiveSecondaryAmplitude = Math.min(secondaryWaveAmplitude, height * 0.42)
 
         // 清除画布
         waveCtx.clearRect(0, 0, width, height)
@@ -49,7 +52,7 @@ export function useWaveAnimation(waveCanvasRef: Ref<HTMLCanvasElement | null>) {
         waveCtx.beginPath()
         waveCtx.moveTo(0, height / 2)
         for (let x = 0; x <= width; x += 1) {
-            const y = height / 2 + Math.sin(x * secondaryWaveFrequency + secondaryWaveTime + secondaryWavePhase) * secondaryWaveAmplitude
+            const y = height / 2 + Math.sin(x * secondaryWaveFrequency + secondaryWaveTime + secondaryWavePhase) * responsiveSecondaryAmplitude
             waveCtx.lineTo(x, y)
         }
         waveCtx.lineTo(width, height)
@@ -64,7 +67,7 @@ export function useWaveAnimation(waveCanvasRef: Ref<HTMLCanvasElement | null>) {
         waveCtx.beginPath()
         waveCtx.moveTo(0, height / 2)
         for (let x = 0; x <= width; x += 1) {
-            const y = height / 2 + Math.sin(x * waveFrequency + waveTime) * waveAmplitude
+            const y = height / 2 + Math.sin(x * waveFrequency + waveTime) * responsiveWaveAmplitude
             waveCtx.lineTo(x, y)
         }
         waveCtx.lineTo(width, height)
