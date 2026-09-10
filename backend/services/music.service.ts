@@ -1,7 +1,11 @@
 import prisma from '../config/database';
-import logger from '../utils/logger';
 
-interface MusicItem {
+/**
+ * 音乐条目
+ *
+ * 字段由 SELECT_MUSIC_FIELDS 显式选取，与对外契约保持一一对应。
+ */
+export interface MusicItem {
   id: number;
   title: string;
   author: string;
@@ -12,72 +16,51 @@ interface MusicItem {
   format: string | null;
 }
 
+/**
+ * 对外返回的字段集合（唯一来源，列表与详情共用）。
+ * 显式 select 而非 select 全表，避免把 duration / chorusIn / BPM 等
+ * 前端未使用的内部字段透传出去。
+ */
+const SELECT_MUSIC_FIELDS = {
+  id: true,
+  title: true,
+  author: true,
+  album: true,
+  mainColor: true,
+  language: true,
+  isTranslate: true,
+  format: true,
+} as const;
+
+/**
+ * 音乐服务
+ *
+ * 历史：本服务曾对 Prisma Music 模型使用 `@ts-ignore`，并在 catch 中回退到
+ * `$queryRaw` 原始 SQL，再用 `error.message.includes("doesn't exist")` /
+ * `includes('不存在')` 判断表缺失后返回空数组。
+ *
+ * 该回退是历史遗留的猜测性防御：Prisma schema 中 Music 模型早已定义
+ * （映射 musics 表），且实测可直接查询。现已删除回退与字符串错误匹配。
+ */
 class MusicService {
   /**
    * 获取音乐列表
    */
   async getMusicList(): Promise<MusicItem[]> {
-    try {
-      // 先尝试使用Prisma模型查询（如果模型存在）
-      try {
-        // @ts-ignore - 如果Music模型不存在会报错
-        const musicList = await prisma.music.findMany({
-          orderBy: { id: 'asc' },
-        });
-        return musicList;
-      } catch (prismaError) {
-        // 如果Prisma模型不存在，使用原始SQL查询
-        logger.info('Prisma Music模型不存在，尝试原始SQL查询');
-
-        // 使用原始SQL查询musics表
-        const musicList = await prisma.$queryRaw<MusicItem[]>`
-          SELECT id, title, author, album, mainColor, language, isTranslate, format
-          FROM musics
-          ORDER BY id ASC
-        `;
-
-        return musicList;
-      }
-    } catch (error) {
-      logger.error('获取音乐列表失败:', error);
-
-      // 如果表不存在，返回空数组
-      if (error instanceof Error && error.message.includes('doesn\'t exist') ||
-          error instanceof Error && error.message.includes('不存在')) {
-        logger.warn('musics表不存在，返回空数组');
-        return [];
-      }
-
-      throw new Error(`获取音乐列表失败: ${error instanceof Error ? error.message : '未知错误'}`);
-    }
+    return prisma.music.findMany({
+      select: SELECT_MUSIC_FIELDS,
+      orderBy: { id: 'asc' },
+    });
   }
 
   /**
    * 根据ID获取音乐信息
    */
   async getMusicById(id: number): Promise<MusicItem | null> {
-    try {
-      try {
-        // @ts-ignore - 如果Music模型不存在会报错
-        const music = await prisma.music.findUnique({
-          where: { id },
-        });
-        return music;
-      } catch (prismaError) {
-        // 使用原始SQL查询
-        const result = await prisma.$queryRaw<MusicItem[]>`
-          SELECT id, title, author, album, mainColor, language, isTranslate, format
-          FROM musics
-          WHERE id = ${id}
-          LIMIT 1
-        `;
-
-        return result.length > 0 ? result[0] : null;
-      }
-    } catch (error) {
-      logger.error(`获取音乐信息失败 (ID: ${id}):`, error);
-      return null;
-    }
+    return prisma.music.findUnique({
+      where: { id },
+      select: SELECT_MUSIC_FIELDS,
+    });
   }
 }
 

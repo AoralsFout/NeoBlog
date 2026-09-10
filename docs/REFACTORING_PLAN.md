@@ -50,7 +50,7 @@ cd frontend && npx vue-tsc --build
 | 7 | 统一 Markdown 渲染与目录大纲 | 职责分散 | 低 | ✅ 已完成 |
 | 8 | 统一外观下发通道（主题/圆角） | 机制重复 | 低 | ✅ 已完成 |
 | 9 | 收敛时间段概念为纯函数 | 机制重复 | 低 | ✅ 已完成 |
-| 10 | 表格化音乐服务，删除 Prisma 回退路径 | 机制重复 | 低 | ⬜ 待执行 |
+| 10 | 表格化音乐服务，删除 Prisma 回退路径 | 机制重复 | 低 | ✅ 已完成 |
 | 11 | 布局所有权移交 CSS | 分支膨胀 | 中 | ⬜ 待执行 |
 | 12 | 引入文章查询协调器 | 职责分散 | 中 | ⬜ 待执行 |
 | 13 | 浏览计数从 GET 副作用分离 | 职责分散 | 中 | ⬜ 待执行 |
@@ -699,14 +699,43 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 
 ### 验证
 - `npx tsc --noEmit` exit 0（`@ts-ignore` 删除后类型错误会暴露真实问题）。
-- **人工回归**：`GET /api/music/getMusicList` 返回与改动前**逐字段一致**（对比 `id/title/author/album/mainColor/language/isTranslate/format`）。
-- 前端音乐播放器能正常加载列表（这一步只验证播放器**仍能读到数据**，不涉及播放逻辑）。
+- **前置确认（执行时实测）**：先验证 Prisma Music 模型确实可用，再动删除，避免凭假设删除回退：
+  | 探针 | 结果 |
+  |---|---|
+  | `prisma.music.findMany()` | 19 条，无异常 |
+  | 模型字段 | `BPM, album, author, bgPositionY, chorusIn, chorusOut, duration, format, id, isTranslate, language, mainColor, title` |
+  | 原始 SQL | 19 条 |
+  | `select` 子集 8 字段 | 19 条，与原始 SQL 逐字段一致 |
+- **已执行：API 响应字段对等性验证**（`/api/music/getMusicList` 与原始 SQL 逐字段比对）：
+
+  | 断言 | 结果 |
+  |---|---|
+  | HTTP 状态 / `success` | `200` / `true` |
+  | 条目数 | 19（与原始 SQL 相同） |
+  | 响应字段集合 | `album,author,format,id,isTranslate,language,mainColor,title` —— `FIELDS_EXACT_MATCH=true` |
+  | 逐条逐字段差异 | **`TOTAL_DIFFS=0`** |
+  | `isTranslate` 对外类型 | `number`，值 `1`（控制器把 `true` 归一化为 `1`，与改动前一致） |
+
+- **未执行**：前端音乐播放器端到端播放验证（需要浏览器与音频设备）。
+  本步只验证数据链路，播放逻辑属步 15/16 范围。
+
+### 状态
+✅ 已完成（类型检查 + 前置可用性确认 + API 字段对等性验证通过）
 
 ### 收益
-- 删除 2 处 `@ts-ignore`、2 段重复 SQL、1 处字符串错误匹配。
+- 删除 2 处 `@ts-ignore`、2 段重复 `$queryRaw` SQL、1 处字符串错误匹配
+  （`includes("doesn't exist")` / `includes('不存在')`）。
+- 删除"猜表不存在就返回空数组"的静默降级：若 `musics` 表将来真的缺失，
+  会**显式报错**而不是静默返回空列表让前端显示"暂无音乐"。
+- 显式 `select` 8 个字段，不再把 `duration/chorusIn/chorusOut/BPM/bgPositionY`
+  等内部字段透传给前端（改动前原始 SQL 恰好也只选 8 个，故对外无变化）。
+- `getMusicList` 与 `getMusicById` 从嵌套 try/catch 简化为各一行查询。
 
 ### 风险
-**低**。若 DB 中 `musics` 表结构与 Prisma 模型不符，本步会**暴露**该事实 —— 这本身是收益。
+**低**。已用真实数据证明字段与取值完全对等。
+**背景补充**：仓库中**没有** `prisma/migrations` 目录，schema 由外部维护；
+`prisma/add_token_version.sql` 是手工迁移脚本。因此"表是否与模型一致"此前只能靠运行时猜测。
+本步的实测确认消除了这一不确定性。
 
 ---
 
@@ -1035,6 +1064,7 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 | 6 | `55949f4` | — | 会话初始化入口 4→1（路由守卫）；`bootstrapped` 取代"用 currentUser 判幂等"；单一 `isLoading` 拆为 `isBootstrapping` + `pending.{logout,updateProfile,uploadAvatar}`。静态验证通过；浏览器回归清单待补验。`vite build` 受沙箱 `spawn EPERM` 限制未能执行。 |
 | 7 | `0abfb2d` | — | 新增 `utils/markdown.ts` 统一渲染与大纲提取；删除正则反解析与模块级计数器。**发现并修复既有缺陷**：旧代码的 `heading({text})` 在 marked v18 下使标题渲染为 `undefined`。保留 `articleStore` 传递大纲（provide/inject 回退方案）。 |
 | 8 | `6532661` | — | 新增 `utils/appearance.ts` + `composables/useThemeColors.ts`；圆角改由 `data-radius` + CSS 表达，删除 JS 表格与 switch。修复 `Settings.vue` 预览值与实际值不一致的 bug；顺带修复主题 store 未校验 localStorage 的问题。`--scroll-ratio` 留待步 11。 |
-| 9 | `待填` | — | 新增 `composables/useTimePeriod.ts`；时段边界表与问候语映射成为唯一来源，删除 2 条 7 分支 if 链与 `lastDate`。24 小时逐点等价性验证全部一致。 |
+| 9 | `869c386` | — | 新增 `composables/useTimePeriod.ts`；时段边界表与问候语映射成为唯一来源，删除 2 条 7 分支 if 链与 `lastDate`。24 小时逐点等价性验证全部一致。 |
+| 10 | `待填` | — | 删除 `@ts-ignore`、`$queryRaw` 回退与字符串错误匹配，改用显式 `select` 的 Prisma 查询。实测 19 条数据逐字段对等（`TOTAL_DIFFS=0`）。确认仓库无 `prisma/migrations`，schema 由外部维护。 |
 
 > 每步完成后在此表追加一行：步骤号、commit hash、日期、实施中的偏差或发现。
