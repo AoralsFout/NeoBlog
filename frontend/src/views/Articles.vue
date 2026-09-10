@@ -22,16 +22,16 @@
 
     <div class="content">
       <!-- 首次加载（无内容时）才显示整块占位 -->
-      <div v-if="loading && articles.length === 0" class="state">加载中...</div>
-      <div v-else-if="error && articles.length === 0" class="state error" role="alert">
+      <div v-if="initialLoading" class="state">加载中...</div>
+      <div v-else-if="blockingError" class="state error" role="alert">
         <strong>{{ error }}</strong>
-        <button type="button" @click="loadArticles">重新加载</button>
+        <button type="button" @click="reload">重新加载</button>
       </div>
       <template v-else>
         <div v-if="error" class="inline-error">{{ error }}</div>
 
         <!-- Article list -->
-        <div v-if="articles.length" class="list" :class="{ dimmed: loading }">
+        <div v-if="articles.length" class="list" :class="{ dimmed: refreshing }">
           <ArticleCard v-for="a in articles" :key="a.id" :article="a" />
         </div>
         <div v-else class="state">暂无文章</div>
@@ -49,93 +49,44 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { articleApi } from '@/utils/api';
 import { useUserStore } from '@/stores/user';
+import { useArticleQuery } from '@/composables/useArticleQuery';
 import ArticleCard from '@/components/ArticleCard.vue';
 import Pagination from '@/components/Pagination.vue';
 import Button from '@/components/Button.vue';
 import CommentBox from '@/components/CommentBox.vue';
-import type { Article, Pagination as PaginationType } from '@/types/article';
 
-const route = useRoute();
-const router = useRouter();
 const userStore = useUserStore();
 
-const articles = ref<Article[]>([]);
-const pagination = ref<PaginationType>({ page: 1, limit: 5, total: 0, total_pages: 0 });
-const loading = ref(true);
-const error = ref('');
-const sort = ref<'time' | 'hot'>('time');
-const page = ref(1);
-const tag = ref('');
+// 列表状态与加载全部由协调器负责（路由 query 为唯一状态源）
+const {
+  articles,
+  pagination,
+  error,
+  initialLoading,
+  blockingError,
+  refreshing,
+  sort,
+  page,
+  tag,
+  setSort,
+  setPage,
+  setTag,
+  reload,
+} = useArticleQuery();
 
-// 构建查询参数（保留标签筛选）
-function buildQuery(overrides: Record<string, string | number>) {
-  const query: Record<string, string | number> = { ...overrides };
-  if (tag.value) query.tag = tag.value;
-  return query;
-}
-
-// 以下操作只更新路由查询参数，由watch统一触发加载，避免重复请求
 function changeSort(newSort: 'time' | 'hot') {
-  if (sort.value === newSort && page.value === 1) return;
-  router.replace({ query: buildQuery({ sort: newSort, page: 1 }) });
+  setSort(newSort);
 }
 
 function handlePageChange(p: number) {
-  if (p === page.value) return;
-  router.replace({ query: buildQuery({ sort: sort.value, page: p }) });
+  setPage(p);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function clearTag() {
-  router.replace({ query: { sort: sort.value, page: 1 } });
+  setTag(null);
 }
-
-async function loadArticles() {
-  loading.value = true;
-  error.value = '';
-  try {
-    const listRes = await articleApi.getArticles({
-      page: page.value,
-      limit: 5,
-      sort: sort.value,
-      ...(tag.value && { tag: tag.value }),
-    });
-    if (listRes.success) {
-      articles.value = listRes.articles;
-      pagination.value = listRes.pagination;
-    }
-  } catch (e: any) {
-    console.error('加载文章失败:', e);
-    error.value = '文章暂时没有加载出来';
-  } finally {
-    loading.value = false;
-  }
-}
-
-function applyQuery() {
-  const q = route.query;
-  if (q.sort === 'hot' || q.sort === 'time') sort.value = q.sort;
-  else sort.value = 'time';
-  page.value = q.page ? Math.max(1, parseInt(q.page as string) || 1) : 1;
-  tag.value = typeof q.tag === 'string' ? q.tag : '';
-  loadArticles();
-}
-
-onMounted(() => {
-  applyQuery();
-});
-
-// 查询参数变化（侧栏标签点击/排序/分页/清除标签）时统一重新加载
-watch(
-  () => route.query,
-  () => {
-    applyQuery();
-  }
-);
 </script>
 
 <style scoped>

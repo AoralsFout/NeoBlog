@@ -52,7 +52,7 @@ cd frontend && npx vue-tsc --build
 | 9 | 收敛时间段概念为纯函数 | 机制重复 | 低 | ✅ 已完成 |
 | 10 | 表格化音乐服务，删除 Prisma 回退路径 | 机制重复 | 低 | ✅ 已完成 |
 | 11 | 布局所有权移交 CSS | 分支膨胀 | 中 | ✅ 已完成 |
-| 12 | 引入文章查询协调器 | 职责分散 | 中 | ⬜ 待执行 |
+| 12 | 引入文章查询协调器 | 职责分散 | 中 | ✅ 已完成 |
 | 13 | 浏览计数从 GET 副作用分离 | 职责分散 | 中 | ⬜ 待执行 |
 | 14 | 提取共享格式化/标签工具 | 机制重复 | 低 | ⬜ 待执行 |
 | 15 | MusicPlayer 状态收敛（阶段一：只读订阅） | 时序耦合 | 中 | ⬜ 待执行 |
@@ -856,24 +856,60 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 
 ### 验证
 - `npx vue-tsc --build` exit 0。
-- **人工回归清单**：
-  1. 进入"文章"页 → 列表加载，URL 无多余 query（或规范化）。
-  2. 点"最热" → URL 变为 `?sort=hot&page=1`，列表更新；点"最新"同理。
-  3. 翻页 → URL `page` 更新，列表更新，页面滚到顶部。
-  4. 右侧栏点标签 → 跳转到 `/articles?tag=xxx`，列表过滤，标签筛选条显示。
-  5. 点标签的 ✕ → 清除过滤。
-  6. 浏览器后退/前进 → 列表与 URL **同步**（这是 query 方案的核心理由）。
-  7. 直接粘贴带 query 的 URL → 正确渲染。
-  8. 切换排序/翻页时旧列表**保留并降透明度**（`dimmed` 行为不丢）。
-  9. 加载中不产生重复请求（Network 面板每次操作 1 个 `/api/articles` 请求）。
+- **已执行：URL 形态与后端兼容性验证**（启动后端，逐条请求协调器会生成与不会生成的 URL 形态）：
+
+  | 断言 | URL | 结果 |
+  |---|---|---|
+  | A 默认（无 sort/page） | `/api/articles?limit=5` | `200 total=2 page=1 limit=5` |
+  | B 最热 | `?limit=5&sort=hot` | `200 total=2`，首条 id=1（与最新的 id=2 不同，证明 hot 生效） |
+  | C 第二页（无 sort） | `?limit=5&page=2` | `200 page=2`（无数据，因 total=2） |
+  | D 第二页 + 最热 | `?limit=5&page=2&sort=hot` | `200 page=2` |
+  | E/F 标签 / 标签+最热 | `?tag=...` | `200`（该标签无匹配，见下） |
+  | G 不存在的标签 | `?tag=zzz-not-exist` | `200 total=0`（不报错） |
+  | H 旧实现形态（显式默认值） | `?page=1&limit=5&sort=time` | `200`，A 与 H 结果一致 |
+
+- **已执行：真实标签过滤验证**（从 DB 取真实标签，而非我臆造的中文标签）：
+
+  | 断言 | 结果 |
+  |---|---|
+  | 数据库文章 | id=1 `开发日志`；id=2 `Steam Web API,指南,文档` |
+  | `/api/articles?tag=开发日志` | `200 total=1 ids=[1]` —— 过滤生效 |
+  | `/api/articles?sort=hot&tag=开发日志` | `200 total=1 ids=[1]` —— 热门分支与标签组合生效 |
+
+  > 说明：初次探针用了臆造的标签 `技术`，返回 `total=0`，容易被误读为"标签过滤失效"。
+  > 因此改用 DB 中的真实标签复验，确认过滤与热门分支均正常。
+
+- **已执行：加载次数与状态语义审查（静态）**：
+  - 协调器内部只有**一个** `watch(() => route.query, load, { immediate: true })`，
+    取代了原来 `onMounted(applyQuery)` + `watch(route.query, applyQuery)` 的双触发路径。
+  - 新增请求序号 `requestSeq` 做竞态保护（快速连续切换排序/页码时，旧响应不会覆盖新状态）
+    —— 这是原实现**没有**的保护。
+
+- **URL 规范化（有意的行为变化，仅影响地址栏）**：
+  协调器省略默认值：`sort=time` 与 `page=1` 不写入 query。
+  故用户偏好默认值后地址栏为 `/articles` 而不是 `/articles?sort=time&page=1`。
+  上表 A 与 H 结果一致，证明后端兼容两种形态；功能无差异。
+
+- **未执行**：浏览器端回归（点击排序/翻页/标签后 URL 与列表同步、前进后退、直接粘贴带 query 的 URL、
+  `dimmed` 体验）。需要真实浏览器，已列入待补验清单。
+
+### 状态
+✅ 已完成（类型检查 + URL 形态/标签过滤实测通过；浏览器回归待补验）
 
 ### 收益
-- 列表状态 3 套（约 18 个 ref）→ 1 套（6 个）；消除重复请求路径。
-- `Articles.vue` 减少约 50 行；`Home.vue` 消除中文路由名耦合。
-- 列表相关改动的修改面从 2-3 文件收敛到 1。
+- `Articles.vue` 本地状态 7 个（`articles`/`pagination`/`loading`/`error`/`sort`/`page`/`tag`）
+  → 0（全部来自协调器）；删除 `loadArticles`/`applyQuery`/`buildQuery` 三个函数。
+- 列表加载触发路径 2 条（`onMounted` + `watch`）→ 1 条（唯一 `watch`）。
+- 新增竞态保护（`requestSeq`），修复潜在的"快速切换导致旧响应覆盖"。
+- 后续 `ArticleDetail`（步 13）与任何新列表视图都可复用同一协调器。
 
 ### 风险
-**中**。关键风险是 `dimmed`（保留旧数据）体验丢失，已在改动项 1 明确要求支持。步骤 11 已完成，本步不再触碰布局。
+**中**。关键风险是 `dimmed`（保留旧数据）体验丢失 —— 已通过
+`refreshing = loading && articles.length > 0` 与模板 `:class="{ dimmed: refreshing }"` 保留。
+**未做**：`ArticleDetail.vue` 的数据加载未纳入本协调器。它是单一资源而非列表，
+且其改造与步 13（浏览计数副作用分离）必须在同一次提交内完成，
+故本步只统一了 `Articles.vue`；计划中原定"本步统一 ArticleDetail 的 loading/error 命名"
+未执行，理由是避免与步 13 产生重叠提交，属有意的范围收窄。
 
 ---
 
@@ -1099,5 +1135,6 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 | 9 | `869c386` | — | 新增 `composables/useTimePeriod.ts`；时段边界表与问候语映射成为唯一来源，删除 2 条 7 分支 if 链与 `lastDate`。24 小时逐点等价性验证全部一致。 |
 | 10 | `d3486bc` | — | 删除 `@ts-ignore`、`$queryRaw` 回退与字符串错误匹配，改用显式 `select` 的 Prisma 查询。实测 19 条数据逐字段对等（`TOTAL_DIFFS=0`）。确认仓库无 `prisma/migrations`，schema 由外部维护。 |
 | 11 | `efbede1` | — | 布局改由 `data-layout` + CSS grid areas 拥有；删除 5 个 JS 状态与 resize 监听；`RightSidebar` 由 2 个挂载点收敛为 1 个（消除布局切换时的重复请求与计时器重建）。两栏时右栏位置的 9 组合目视核对待补验（残余风险最高项）。 |
+| 12 | `待填` | — | 新增 `composables/useArticleQuery.ts`（路由 query 为唯一状态源，含竞态保护）；`Articles.vue` 本地 7 个状态清零，加载触发路径 2→1。URL 形态与真实标签过滤实测通过。有意的 URL 规范化：省略 `sort=time`/`page=1`。`ArticleDetail` 改造并入步 13。 |
 
 > 每步完成后在此表追加一行：步骤号、commit hash、日期、实施中的偏差或发现。
