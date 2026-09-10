@@ -47,11 +47,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { marked } from 'marked';
-import DOMPurify from 'dompurify';
-import hljs from 'highlight.js';
 import 'highlight.js/styles/github-dark.min.css';
 import { articleApi } from '@/utils/api';
+import { renderMarkdown } from '@/utils/markdown';
 import { useUserStore } from '@/stores/user';
 import Button from '@/components/Button.vue';
 
@@ -74,9 +72,8 @@ const submitError = ref('');
 
 const renderedPreview = computed(() => {
   if (!content.value) return '';
-  const html = marked.parse(content.value) as string;
-  // 预览同样需要清洗，防止粘贴的恶意HTML在编辑页执行
-  return DOMPurify.sanitize(html);
+  // 与详情页共用同一渲染与清洗策略，避免两处 sanitize 配置漂移
+  return renderMarkdown(content.value);
 });
 
 function goBack() {

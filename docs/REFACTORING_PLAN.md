@@ -47,7 +47,7 @@ cd frontend && npx vue-tsc --build
 | 4 | 收敛用户/角色/状态映射 | 机制重复 | 中 | ✅ 已完成 |
 | 5 | 引入领域错误类型，消除字符串匹配判定 | 机制重复 | 中 | ✅ 已完成 |
 | 6 | 收敛会话启动流程，拆分 isLoading | 时序耦合 | 低-中 | ✅ 已完成 |
-| 7 | 统一 Markdown 渲染与目录大纲 | 职责分散 | 低 | ⬜ 待执行 |
+| 7 | 统一 Markdown 渲染与目录大纲 | 职责分散 | 低 | ✅ 已完成 |
 | 8 | 统一外观下发通道（主题/圆角） | 机制重复 | 低 | ⬜ 待执行 |
 | 9 | 收敛时间段概念为纯函数 | 机制重复 | 低 | ⬜ 待执行 |
 | 10 | 表格化音乐服务，删除 Prisma 回退路径 | 机制重复 | 低 | ⬜ 待执行 |
@@ -478,22 +478,52 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 
 ### 验证
 - `npx vue-tsc --build` exit 0。
-- **人工回归清单**：
-  1. 打开任意文章 → 目录正确列出 h1~h3，层级样式正确。
-  2. 点击目录项 → 平滑滚动到对应标题。
-  3. 滚动正文 → 目录高亮跟随。
-  4. 从文章 A 导航到文章 B → 目录**完全替换**，无 A 的残留标题。
-  5. 目录项文本被截断时 hover → 自定义 tooltip 正常定位。
-  6. 编辑器 Markdown 预览仍正常且**不执行脚本**（粘贴 `<script>` 或 `<img onerror>` 验证）。
-  7. 非文章详情页 → 不显示目录。
+- **已执行的渲染器运行时验证**（Node + marked v18 + highlight.js，独立脚本）：
+
+  | 断言 | 结果 | 结论 |
+  |---|---|---|
+  | h1~h4 的 id 生成 | `heading-0/1/2/3` | 锚点正常 |
+  | 目录条目 | `[{heading-0,一级标题,1},{heading-1,二级 加粗 标题,2},{heading-2,三级 code 标题,3}]` | 只收 h1~h3；内联标签被剥离 |
+  | `<strong>` 内联渲染 | `true` | 目录内的加粗被正确解析后剥离 |
+  | `<code>` 内联渲染 | `true` | 同上 |
+  | 代码块高亮 | `class="hljs language-js"` | 高亮保留 |
+  | 表格 | `<table>` | gfm 正常 |
+  | **连续两次渲染的 id** | 两次都从 `heading-0` 开始 | **无模块级计数器污染（本步核心修复）** |
+
+- **执行中发现的重要事实（解释了一个潜在真实缺陷）**：
+  仓库中原本的 `ArticleDetail.vue` 在 marked **v18** 下是**坏的**。
+  v18 的 `Renderer.heading` 签名是 `heading({ tokens, depth })`，而旧代码写的是
+  `heading({ text, depth })`。`Tokens.Heading` 没有 `text` 字段，因此旧代码的
+  `id` 虽然照常生成，但返回的标签是 `<h2 id="heading-1">undefined</h2>`。
+  这解释了为什么标题文本需要靠"正则从 HTML 反解析"才能拿到——
+  反解析出的 `text` 同样会是 `undefined`。
+  本次重写采用 `this.parser.parseInline(tokens)` 取得真实标题 HTML，
+  使目录文本与正文渲染同时恢复正常。**这是本步修复的一个既有显示缺陷**，
+  不只是结构收敛。（旧代码之所以能通过类型检查，是因为项目当时用的 marked 版本更老。）
+
+- **未执行**：浏览器端目视回归（目录高亮跟随、点击滚动、tooltip 定位、跨文章切换）。
+  这些需要真实浏览器与运行中的前后端。已列入待补验清单。
+
+### 状态
+✅ 已完成（类型检查 + 渲染器运行时验证通过；浏览器目视回归待补验）
 
 ### 收益
-- `renderMarkdown` 调用 2 → 1；删除正则反解析（13 行）与模块级可变计数器 1 个。
-- DOMPurify 配置 2 份 → 1 份（消除编辑器 sanitize 更宽松的隐患）。
-- 目录失效风险从"sanitize 配置耦合"变为"无"。
+- `renderMarkdown` 调用 2 → 1（`renderedContent` 由 `loadArticle` 的重复渲染改为单一 computed）。
+- 删除正则反解析 `extractHeadings`（13 行）与模块级可变计数器 `headingIndex`。
+- DOMPurify 配置 2 份 → 1 份（消除编辑器 sanitize 比详情页更宽松的隐患）。
+- 目录失效风险从"依赖 sanitize 保留 id"变为"无"（不再反解析 HTML）。
+- `showToc` 不再依赖中文路由名字面量（改用 `route.meta.toc`）。
+- **修复既有缺陷**：标题文本在 marked v18 下原本渲染为 `undefined`。
+- `TocHeading` 类型归属从"组件文件"上移到渲染层 `utils/markdown`，消除
+  `stores/article.ts` 反向依赖组件文件的问题。
 
 ### 风险
-**低**。改动局部。唯一设计风险是 `provide/inject` 在嵌套 router-view + transition 下的可靠性，已在改动项 4 给出回退方案。
+**低**。改动局部且已验证。
+**决策记录（步骤 7 改动项 4 的回退）**：计划中提出用 `provide/inject` 替代全局
+`articleStore` 传递大纲，但该链路穿过 `<router-view>` + `<transition>`，
+存在注入链断裂风险。为不引入脆弱机制，**保留 `articleStore`**，
+只删除反解析与二次渲染——即计划中明确允许的回退方案。
+`contentRef` 暂未被读取（模板绑定，保留以备后续滚动高亮使用）。
 
 ---
 
@@ -956,6 +986,7 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 | 3 | `b7a5b1e` | — | 统一会话解析为 `resolveSession`，新增 `authenticateOptional`。**已用旧/新代码对照复现并修复授权漏洞**：已登出令牌在旧代码下仍回显 `user_reaction="like"`，新代码返回 `null`。验证脚本为一次性，未入库。 |
 | 4 | `269d53e` | — | 新增 `backend/mappers/user.ts`，删除两份重复 mapper。关键验证：`/api/auth/me` 的 9 个字段完整性（`getUserProfile` 改为显式 select 后未丢字段）。前端侧枚举文案留待步 14。 |
 | 5 | `0e9bd86` | — | 新增 `backend/utils/errors.ts` 与统一错误中间件，4 处字符串匹配判定清零。发现并修复"409 分支不可达"缺陷（P4 由 500→409）。P2 语义错误（应为 400）刻意保留 500 并记录待决。 |
-| 6 | `待填` | — | 会话初始化入口 4→1（路由守卫）；`bootstrapped` 取代"用 currentUser 判幂等"；单一 `isLoading` 拆为 `isBootstrapping` + `pending.{logout,updateProfile,uploadAvatar}`。静态验证通过；浏览器回归清单待补验。`vite build` 受沙箱 `spawn EPERM` 限制未能执行。 |
+| 6 | `55949f4` | — | 会话初始化入口 4→1（路由守卫）；`bootstrapped` 取代"用 currentUser 判幂等"；单一 `isLoading` 拆为 `isBootstrapping` + `pending.{logout,updateProfile,uploadAvatar}`。静态验证通过；浏览器回归清单待补验。`vite build` 受沙箱 `spawn EPERM` 限制未能执行。 |
+| 7 | `待填` | — | 新增 `utils/markdown.ts` 统一渲染与大纲提取；删除正则反解析与模块级计数器。**发现并修复既有缺陷**：旧代码的 `heading({text})` 在 marked v18 下使标题渲染为 `undefined`。保留 `articleStore` 传递大纲（provide/inject 回退方案）。 |
 
 > 每步完成后在此表追加一行：步骤号、commit hash、日期、实施中的偏差或发现。

@@ -24,12 +24,10 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import Card from './Card.vue';
+import type { TocHeading } from '@/utils/markdown';
 
-export interface TocHeading {
-  id: string;
-  text: string;
-  level: number;
-}
+// 目录条目类型由渲染层（utils/markdown）定义并导出，组件不再重复声明
+export type { TocHeading };
 
 const props = defineProps<{
   headings: TocHeading[];

@@ -188,8 +188,8 @@ const updateWindowWidth = () => {
     windowWidth.value = window.innerWidth;
 };
 
-// 文章详情页时显示目录
-const showToc = computed(() => route.name === '文章详情' && articleStore.headings.length > 0);
+// 文章详情页时显示目录（依据路由 meta，避免依赖中文路由名）
+const showToc = computed(() => Boolean(route.meta.toc) && articleStore.headings.length > 0);
 
 // 有效布局：小屏幕强制两栏，手机强制单栏（通过CSS处理）
 const effectiveLayout = computed(() => {

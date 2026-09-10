@@ -32,6 +32,7 @@ const router = createRouter({
           path: '/article/:id',
           name: '文章详情',
           component: () => import('@/views/ArticleDetail.vue'),
+          meta: { toc: true },
         },
         {
           path: '/settings',

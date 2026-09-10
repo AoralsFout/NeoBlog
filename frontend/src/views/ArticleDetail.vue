@@ -40,12 +40,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { marked } from 'marked';
-import DOMPurify from 'dompurify';
-import hljs from 'highlight.js';
 import 'highlight.js/styles/github-dark.min.css';
 import { articleApi } from '@/utils/api';
+import { renderArticle } from '@/utils/markdown';
 import { useArticleStore } from '@/stores/article';
+import type { TocHeading } from '@/utils/markdown';
 import { useUserStore } from '@/stores/user';
 import CommentBox from '@/components/CommentBox.vue';
 import Button from '@/components/Button.vue';
@@ -73,53 +72,15 @@ const canEdit = computed(() => {
   return article.value.author_id === userStore.currentUser.id || userStore.currentUser.role === 'admin';
 });
 
-const renderedContent = computed(() => {
-  if (!article.value) return '';
-  return renderMarkdown(article.value.content || '');
+// 单次渲染同时得到 HTML 与大纲，二者必然一致（不再正则反解析）
+const rendered = computed(() => {
+  if (!article.value?.content) {
+    return { html: '', headings: [] as TocHeading[] };
+  }
+  return renderArticle(article.value.content);
 });
 
-let headingIndex = 0;
-
-const markedRenderer = new marked.Renderer();
-markedRenderer.heading = function ({ text, depth }: { text: string; depth: number }) {
-  const id = `heading-${headingIndex++}`;
-  return `<h${depth} id="${id}">${text}</h${depth}>`;
-};
-markedRenderer.code = function ({ text, lang }: { text: string; lang?: string }) {
-  if (lang && hljs.getLanguage(lang)) {
-    try {
-      const highlighted = hljs.highlight(text, { language: lang }).value;
-      return `<pre><code class="hljs language-${lang}">${highlighted}</code></pre>`;
-    } catch { }
-  }
-  return `<pre><code>${text}</code></pre>`;
-};
-
-marked.use({ renderer: markedRenderer, breaks: true, gfm: true });
-
-function renderMarkdown(content: string): string {
-  headingIndex = 0;
-  const html = marked.parse(content) as string;
-  // 清洗HTML，移除脚本等危险内容（防存储型XSS）
-  return DOMPurify.sanitize(html, {
-    // 高亮代码需要保留class属性
-    FORBID_TAGS: ['style', 'form', 'input', 'iframe', 'object', 'embed'],
-  });
-}
-
-function extractHeadings(content: string) {
-  const headings: { id: string; text: string; level: number }[] = [];
-  const regex = /<h([1-3])\s+id="(heading-\d+)"[^>]*>(.*?)<\/h\1>/gi;
-  let match;
-  while ((match = regex.exec(content)) !== null) {
-    headings.push({
-      level: parseInt(match[1]!),
-      id: match[2]!,
-      text: match[3]!.replace(/<[^>]*>/g, ''),
-    });
-  }
-  return headings;
-}
+const renderedContent = computed(() => rendered.value.html);
 
 function goEdit() {
   router.push(`/article/${articleId.value}/edit`);
@@ -149,8 +110,6 @@ async function loadArticle() {
     const res = await articleApi.getArticleById(articleId.value);
     if (res.success && res.data) {
       article.value = res.data;
-      const html = renderMarkdown(res.data.content);
-      articleStore.setHeadings(extractHeadings(html));
     } else {
       error.value = '文章不存在';
     }
@@ -161,6 +120,15 @@ async function loadArticle() {
     loading.value = false;
   }
 }
+
+// 正文渲染完成后同步目录（渲染是纯计算，不做副作用；此处单独同步 store）
+watch(
+  rendered,
+  (value) => {
+    articleStore.setHeadings(article.value ? value.headings : []);
+  },
+  { immediate: true }
+);
 
 watch(articleId, () => loadArticle());
 onMounted(() => loadArticle());

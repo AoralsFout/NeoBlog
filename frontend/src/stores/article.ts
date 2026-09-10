@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
-import type { TocHeading } from '@/components/TableOfContents.vue';
+import type { TocHeading } from '@/utils/markdown';
 
 export const useArticleStore = defineStore('article', () => {
   const headings = ref<TocHeading[]>([]);
