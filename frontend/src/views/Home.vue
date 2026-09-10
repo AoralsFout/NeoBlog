@@ -472,9 +472,16 @@ onBeforeUnmount(() => {
         "right main";
 }
 
-/* 小屏（≤1024px）强制两栏，与用户偏好无关 */
+/*
+ * 小屏（≤1024px）强制两栏，与用户偏好无关。
+ *
+ * 选择器必须写成 .layout[data-layout]（特异性 0,2,0）而非 .layout（0,1,0）：
+ * 上面 .layout[data-layout="2"] / ="3" 的特异性都是 0,2,0，
+ * 用 0,1,0 的选择器无法覆盖它们，会导致"偏好三栏时小屏仍是三栏"。
+ * 该缺陷曾由用户目视回归发现（≤1024px 未强制两栏）。
+ */
 @media (max-width: 1024px) {
-    .layout {
+    .layout[data-layout] {
         grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
         grid-template-areas:
             "left  main"

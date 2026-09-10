@@ -408,6 +408,10 @@ const syncMusicBoxTransform = () => {
             : 'translateX(' + 800 * scale.value + 'px) scale(' + scale.value + ')';
     }
     if (musicBoxButtonIcon.value) {
+        // 注意：图标旋转与上方 musicBox 的位移条件**故意相反**。
+        // 收起时盒子向右滑出屏幕、图标旋转 180°，形成"把盒子拉出来"的视觉暗示；
+        // 展开后转回 0°。看似写错，但这是既有的正确行为——步骤 15 曾把两者改成一致，
+        // 导致图标方向反转（已由目视回归确认），此处恢复原逻辑。
         musicBoxButtonIcon.value.style.transform = isMusicBoxOpen.value
             ? 'translate(-50%, -50%) rotate(0deg)'
             : 'translate(-50%, -50%) rotate(180deg)';
