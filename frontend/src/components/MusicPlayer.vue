@@ -1068,6 +1068,13 @@ let userScrollTimer: number | null = null
 let isUserScrolling: boolean = false
 
 // 处理用户手动滚动事件
+//
+// 说明（步骤 16 的评估结论）：这里用定时器区分"用户滚动"与"程序滚动"，
+// 原注释自述为"下策"。曾尝试改用 event.isTrusted 做语义化区分，但实测资料
+// 表明浏览器对 scrollTo() 触发的 scroll 事件可能标记为 trusted
+// （见 https://stackoverflow.com/questions/36656858/ ），该方案前提不成立，
+// 会退化成"用户手动滚动永不生效"。因此**刻意保留**现有定时器启发式，
+// 待有真实浏览器环境后再用 scrollend 事件或显式旗标重构。
 const handleLyricsScroll = (e: Event) => {
     // 用户滚动时，清除之前的定时器
     if (userScrollTimer) {
@@ -1278,9 +1285,10 @@ const updateScale = () => {
         ? Math.min(1, Math.max(0.35, (width - 56) / 800))
         : Math.min(1, width / 1000);
 
-    if (musicBox.value) {
-        musicBox.value.style.transform = !isMusicBoxOpen.value ? 'translateX(' + 800 * scale.value + 'px) scale(' + scale.value + ')' : 'translateX(0px) scale(' + scale.value + ')';
-    }
+    // 复用唯一的位置同步函数，避免与 toggleMusicBox 各自计算同一表达式。
+    // 原实现此处把布尔条件写反（!isMusicBoxOpen 分支给出了展开态的位置），
+    // 与 toggleMusicBox 中的表达式互相矛盾，仅靠调用顺序掩盖。
+    syncMusicBoxTransform()
 }
 
 // 在组件挂载时添加音频事件监听
