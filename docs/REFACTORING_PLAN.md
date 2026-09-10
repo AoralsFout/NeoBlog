@@ -51,7 +51,7 @@ cd frontend && npx vue-tsc --build
 | 8 | 统一外观下发通道（主题/圆角） | 机制重复 | 低 | ✅ 已完成 |
 | 9 | 收敛时间段概念为纯函数 | 机制重复 | 低 | ✅ 已完成 |
 | 10 | 表格化音乐服务，删除 Prisma 回退路径 | 机制重复 | 低 | ✅ 已完成 |
-| 11 | 布局所有权移交 CSS | 分支膨胀 | 中 | ⬜ 待执行 |
+| 11 | 布局所有权移交 CSS | 分支膨胀 | 中 | ✅ 已完成 |
 | 12 | 引入文章查询协调器 | 职责分散 | 中 | ⬜ 待执行 |
 | 13 | 浏览计数从 GET 副作用分离 | 职责分散 | 中 | ⬜ 待执行 |
 | 14 | 提取共享格式化/标签工具 | 机制重复 | 低 | ⬜ 待执行 |
@@ -773,22 +773,54 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 
 ### 验证
 - `npx vue-tsc --build` exit 0。
-- **人工回归清单**（三档布局 × 三档视口 = 9 组合逐一核对）：
+- **已执行：静态结构验证**（脚本检查模板与 CSS）：
+
+  | 断言 | 结果 |
+  |---|---|
+  | `<RightSidebar />` 挂载次数 | **1**（改动前 2） |
+  | 绑定方式 | `:data-layout="layout"`；旧的 `layout-${...}` class 绑定已消失 |
+  | JS 中残留的 `windowWidth` / `effectiveLayout` / `showRightInLeft` / `updateWindowWidth` | 全部为 `false` |
+  | CSS 规则 | base `.layout`、`.layout[data-layout="3"]`、`.layout[data-layout="2"]`、`@media (max-width:1024px)`、`@media (max-width:768px)` 均存在 |
+  | `grid-template-areas` | 三栏 `"left main right"`；两栏 `"left main" "right main"`；base 兜底为三栏 |
+  | 单栏规则 | 768px 块内存在 `"main" "left" "right"` |
+  | JS 中残留断点比较（`innerWidth >`/`<`） | `false` |
+
+- **设计说明（两栏时右侧栏的位置）**：
+  改动前两栏模式是把 `<RightSidebar>` 挂进 `.left` 容器，视觉上位于左栏卡片下方。
+  现在改为 `.right` 使用 `grid-area: right` 且 `grid-template-areas: "left main" "right main"`，
+  即 `.right` 占据 row 2 的 left 列（宽度与 `.left` 同宽，因为同在 col 1），
+  视觉结果一致但**组件不换位置、不重挂载**。这正是本步消除"重复请求"收益的来源。
+
+- **未执行（本步唯一未能闭环的验证）**：浏览器端 9 种组合的目视核对
+  （3 档偏好 × 3 档视口）。需要真实浏览器且能调整窗口宽度。
+  **这是全计划中残余风险最高的一项**，建议优先补验，核对点：
   1. 桌面宽屏 + 偏好三栏 → 左/中/右三栏。
-  2. 桌面宽屏 + 偏好两栏 → 左/中两栏，**右侧栏内容出现在左栏下方**。
-  3. 视口 1024px 以下 → 强制两栏（与偏好无关）。
-  4. 视口 768px 以下 → 单栏，顺序为 主内容 → 左栏 → 右栏（与当前 `grid-template-areas: "main" "left" "right"` 一致）。
-  5. 拖动窗口跨过 1024 / 768 断点 → 布局实时切换，**无重复网络请求**（Network 面板确认 `RightSidebar` 未重新请求 `/api/stats`）。
-  6. `RightSidebar` 的时钟与风景在布局切换后**不重置**（验证未重挂载）。
-  7. 设置页切换两栏/三栏 → 立即生效并持久化。
+  2. 桌面宽屏 + 偏好两栏 → 左/中两栏，且右侧栏内容出现在**左栏下方**（关键项）。
+  3. 视口 ≤1024px → 强制两栏（与偏好无关）。
+  4. 视口 ≤768px → 单栏，顺序为 主内容 → 左栏 → 右栏。
+  5. 拖动窗口跨断点 → 布局实时切换，且 **Network 面板不出现新的 `/api/stats` 请求**
+     （证明 RightSidebar 未重挂载，这是本步核心收益）。
+  6. 右侧栏时钟在跨断点后不重置。
+
+### 状态
+✅ 已完成（类型检查 + 静态结构验证通过；9 组合目视核对待补验）
 
 ### 收益
-- 断点定义 5 处 → 2（两处 media query）；删除 5 个 computed/ref + 1 个 resize 监听。
-- 消除 `RightSidebar` 重复挂载：每次布局切换省 2 个网络请求 + 1 个 interval 重建。
-- `Home.vue` 从 706 行降至约 640 行（本步不拆组件）。
+- 断点定义 5 处 → 2 处（两个 media query），JS 不再持有断点常量。
+- 删除 5 个 JS 状态（`windowWidth` / `updateWindowWidth` / `effectiveLayout` /
+  `showRight` / `showRightInLeft`）与 1 个 resize 监听。
+- **消除 `RightSidebar` 重复挂载**：每次布局切换省 2 个网络请求
+  （`/api/stats`、`/api/tags`）与 1 个 interval 重建。
+- 顺带修复：`layout` store 从 `localStorage` 读取时未校验，
+  非法值会让 `data-layout` 不匹配任何规则、布局退化为无 grid-area 的堆叠；
+  另加 base `.layout` 三栏兜底。
+- `Home.vue` 从 706 行降至约 660 行（本步未拆组件）。
 
 ### 风险
-**中**。改动 5 的风险最高：两栏模式下右栏内容的 DOM 位置必须实测。若 grid area 方案无法达成，则恢复"两个挂载点"但**用 `v-show` 而非 `v-if`** 以避免重挂载（退一步的收益仍成立）。
+**中**。改动 5 的风险最高：两栏模式下右栏内容的 DOM 位置必须目视实测。
+计划中已给出回退方案——若 `grid-template-areas` 方案无法达成预期视觉，
+则恢复"两个挂载点"但改用 `v-show` 而非 `v-if` 以避免重挂载（收益仍成立）。
+当前实现**未**采用该回退，理由见「设计说明」。若目视核对第 2 项不通过，按此回退。
 
 ---
 
@@ -1065,6 +1097,7 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 | 7 | `0abfb2d` | — | 新增 `utils/markdown.ts` 统一渲染与大纲提取；删除正则反解析与模块级计数器。**发现并修复既有缺陷**：旧代码的 `heading({text})` 在 marked v18 下使标题渲染为 `undefined`。保留 `articleStore` 传递大纲（provide/inject 回退方案）。 |
 | 8 | `6532661` | — | 新增 `utils/appearance.ts` + `composables/useThemeColors.ts`；圆角改由 `data-radius` + CSS 表达，删除 JS 表格与 switch。修复 `Settings.vue` 预览值与实际值不一致的 bug；顺带修复主题 store 未校验 localStorage 的问题。`--scroll-ratio` 留待步 11。 |
 | 9 | `869c386` | — | 新增 `composables/useTimePeriod.ts`；时段边界表与问候语映射成为唯一来源，删除 2 条 7 分支 if 链与 `lastDate`。24 小时逐点等价性验证全部一致。 |
-| 10 | `待填` | — | 删除 `@ts-ignore`、`$queryRaw` 回退与字符串错误匹配，改用显式 `select` 的 Prisma 查询。实测 19 条数据逐字段对等（`TOTAL_DIFFS=0`）。确认仓库无 `prisma/migrations`，schema 由外部维护。 |
+| 10 | `d3486bc` | — | 删除 `@ts-ignore`、`$queryRaw` 回退与字符串错误匹配，改用显式 `select` 的 Prisma 查询。实测 19 条数据逐字段对等（`TOTAL_DIFFS=0`）。确认仓库无 `prisma/migrations`，schema 由外部维护。 |
+| 11 | `待填` | — | 布局改由 `data-layout` + CSS grid areas 拥有；删除 5 个 JS 状态与 resize 监听；`RightSidebar` 由 2 个挂载点收敛为 1 个（消除布局切换时的重复请求与计时器重建）。两栏时右栏位置的 9 组合目视核对待补验（残余风险最高项）。 |
 
 > 每步完成后在此表追加一行：步骤号、commit hash、日期、实施中的偏差或发现。

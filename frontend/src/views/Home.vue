@@ -30,7 +30,7 @@
             </div>
         </div>
         <div id="content-start" class="content">
-            <div class="layout" :class="`layout-${effectiveLayout}`">
+            <div class="layout" :data-layout="layout">
                 <div class="left">
                     <Card class="card">
                         <template v-slot:header>
@@ -136,7 +136,6 @@
                             </div>
                         </template>
                     </Card>
-                    <RightSidebar v-if="showRightInLeft" />
                     <TableOfContents v-if="showToc" :headings="articleStore.headings" />
                 </div>
                 <div class="main">
@@ -146,7 +145,13 @@
                         </transition>
                     </router-view>
                 </div>
-                <div class="right" v-if="showRight">
+                <!--
+                    右侧栏单一挂载点：位置完全由 CSS grid-template-areas 决定。
+                    历史实现按窗口宽度在两个 DOM 位置各挂一次（v-if="showRightInLeft" /
+                    v-if="showRight"），导致布局切换时组件卸载重建、
+                    重复请求 /api/stats 与 /api/tags，并重建时钟计时器。
+                -->
+                <div class="right">
                     <RightSidebar />
                 </div>
             </div>
@@ -179,36 +184,14 @@ const layoutStore = useLayoutStore();
 const articleStore = useArticleStore();
 
 const theme = computed(() => themeStore.theme);
+// 用户布局偏好：直接作为 data-layout 传给 CSS，具体的响应式降级完全由 CSS 决定。
+// 历史实现用 windowWidth 在 JS 里再算一遍 effectiveLayout / showRight / showRightInLeft，
+// 但手机端的计算结果会被 CSS 的 grid-template-columns: 1fr 覆盖丢弃，
+// 等于同一套断点逻辑维护两份。现已全部移除。
 const layout = computed(() => layoutStore.layout);
-
-const windowWidth = ref(window.innerWidth);
-
-// 监听窗口尺寸变化，保证响应式布局实时更新
-const updateWindowWidth = () => {
-    windowWidth.value = window.innerWidth;
-};
 
 // 文章详情页时显示目录（依据路由 meta，避免依赖中文路由名）
 const showToc = computed(() => Boolean(route.meta.toc) && articleStore.headings.length > 0);
-
-// 有效布局：小屏幕强制两栏，手机强制单栏（通过CSS处理）
-const effectiveLayout = computed(() => {
-    if (windowWidth.value <= 768) {
-        // 手机屏幕，CSS会强制单栏，但布局值保持用户选择（不影响）
-        return layout.value;
-    }
-    if (windowWidth.value <= 1024) {
-        // 小屏幕强制两栏
-        return '2';
-    }
-    return layout.value;
-});
-
-// 是否显示右侧栏（三栏或手机屏幕）
-const showRight = computed(() => effectiveLayout.value === '3' || windowWidth.value <= 768);
-
-// 是否在左侧显示右侧内容（两栏且非手机屏幕）
-const showRightInLeft = computed(() => effectiveLayout.value === '2' && windowWidth.value > 768);
 
 // 使用组合式函数实现背景动画和波浪动画
 const wallpapers = ref<HTMLDivElement | null>(null)
@@ -219,13 +202,11 @@ const { start: startWaveAnimation, stop: stopWaveAnimation } = useWaveAnimation(
 onMounted(() => {
     startBackgroundAnimation()
     startWaveAnimation()
-    window.addEventListener('resize', updateWindowWidth)
 })
 
 onBeforeUnmount(() => {
     stopBackgroundAnimation()
     stopWaveAnimation()
-    window.removeEventListener('resize', updateWindowWidth)
 })
 </script>
 
@@ -456,6 +437,9 @@ onBeforeUnmount(() => {
     gap: 2rem;
     max-width: 1400px;
     margin: 0 auto;
+    /* 兜底：data-layout 出现意外值时按三栏排布，避免 grid-area 全部落到隐式网格 */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 3fr) minmax(0, 1fr);
+    grid-template-areas: "left main right";
 }
 
 .footer-shell {
@@ -463,23 +447,54 @@ onBeforeUnmount(() => {
     margin: 0 auto;
 }
 
-/* 三栏布局（minmax(0,1fr)防止长内容撑开侧栏，保持1:3:1比例） */
-.layout-3 {
+/*
+ * 布局完全由 CSS 拥有：
+ *   - JS 只写 data-layout（用户偏好：2 或 3），不再计算窗口宽度
+ *   - 断点降级由下方 media query 表达，是唯一来源
+ * minmax(0, 1fr) 防止长内容撑开侧栏，保持 1:3:1 比例
+ */
+/* 三栏（用户偏好 3，且视口足够宽） */
+.layout[data-layout="3"] {
     grid-template-columns: minmax(0, 1fr) minmax(0, 3fr) minmax(0, 1fr);
     grid-template-areas: "left main right";
 }
 
-/* 两栏布局 */
-.layout-2 {
+/*
+ * 两栏（用户偏好 2）
+ * 右侧栏内容需要在左栏下方继续展示（历史实现是把 RightSidebar 挂到 .left 里），
+ * 这里用 grid area 表达同一视觉结果，避免组件换位置重挂载：
+ *   .right 横跨左栏与其后的间隙，因此其内部卡片与 .left 同宽。
+ */
+.layout[data-layout="2"] {
     grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
-    grid-template-areas: "left main";
+    grid-template-areas:
+        "left  main"
+        "right main";
 }
 
-.layout-2 .right {
-    display: none;
+/* 小屏（≤1024px）强制两栏，与用户偏好无关 */
+@media (max-width: 1024px) {
+    .layout {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
+        grid-template-areas:
+            "left  main"
+            "right main";
+    }
 }
 
 /* 手机屏幕单栏 */
+@media (max-width: 768px) {
+    .layout,
+    .layout[data-layout="2"],
+    .layout[data-layout="3"] {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "main"
+            "left"
+            "right";
+    }
+}
+
 @media (max-width: 768px) {
     .header {
         height: 48vh;
@@ -532,26 +547,9 @@ onBeforeUnmount(() => {
         padding: 1.25rem 1rem 1rem;
     }
 
+    /* 单栏时的间距（grid-template-areas 见文件上方的 .layout 单栏规则） */
     .layout {
-        grid-template-columns: 1fr;
-        grid-template-areas: "main" "left" "right";
         gap: 1.25rem;
-    }
-
-    .layout .right {
-        display: block;
-    }
-
-    /* 覆盖两栏和三栏 */
-    .layout-2,
-    .layout-3 {
-        grid-template-columns: 1fr;
-        grid-template-areas: "main" "left" "right";
-    }
-
-    .layout-2 .right,
-    .layout-3 .right {
-        display: flex;
     }
 }
 
