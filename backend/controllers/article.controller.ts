@@ -33,9 +33,8 @@ export const getArticleById = async (req: Request, res: Response) => {
       });
     }
 
-    // view=false 时跳过浏览计数（编辑器加载等场景）
-    const incrementView = req.query.view !== 'false';
-    const article = await articleService.getArticleById(id, incrementView);
+    // 纯读：浏览计数已拆到 POST /api/articles/:id/views
+    const article = await articleService.getArticleById(id);
     if (!article) {
       return res.status(404).json({
         success: false,
@@ -49,6 +48,37 @@ export const getArticleById = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: { code: 'GET_ARTICLE_FAILED', message: error instanceof Error ? error.message : '获取文章详情失败' },
+    });
+  }
+};
+
+/**
+ * 记录一次浏览（显式命令，替代此前挂在 GET 上的副作用）
+ */
+export const recordArticleView = async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(String(req.params.id), 10);
+    if (isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_PARAMS', message: '无效的文章ID' },
+      });
+    }
+
+    const views = await articleService.recordView(id);
+    if (views === null) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: '文章不存在' },
+      });
+    }
+
+    res.json({ success: true, data: { views } });
+  } catch (error) {
+    logger.error(`记录浏览失败 (ID: ${req.params.id}):`, error);
+    res.status(500).json({
+      success: false,
+      error: { code: 'RECORD_VIEW_FAILED', message: error instanceof Error ? error.message : '记录浏览失败' },
     });
   }
 };
@@ -109,8 +139,9 @@ export const updateArticle = async (req: Request, res: Response) => {
       });
     }
 
-    const existing = await articleService.getArticleById(id, false);
-    if (!existing) {
+    // 存在性检查改为轻量方法，不再取回整篇正文
+    const exists = await articleService.exists(id);
+    if (!exists) {
       return res.status(404).json({
         success: false,
         error: { code: 'NOT_FOUND', message: '文章不存在' },
@@ -155,8 +186,9 @@ export const deleteArticle = async (req: Request, res: Response) => {
       });
     }
 
-    const existing = await articleService.getArticleById(id, false);
-    if (!existing) {
+    // 存在性检查改为轻量方法，不再取回整篇正文
+    const exists = await articleService.exists(id);
+    if (!exists) {
       return res.status(404).json({
         success: false,
         error: { code: 'NOT_FOUND', message: '文章不存在' },

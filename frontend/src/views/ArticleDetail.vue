@@ -110,6 +110,9 @@ async function loadArticle() {
     const res = await articleApi.getArticleById(articleId.value);
     if (res.success && res.data) {
       article.value = res.data;
+      // 读取成功后显式记一次浏览（写操作与读取分离）。
+      // 失败不影响阅读，仅不回显自增后的数值。
+      recordView(articleId.value);
     } else {
       error.value = '文章不存在';
     }
@@ -118,6 +121,21 @@ async function loadArticle() {
     error.value = '这篇文章暂时没有加载出来';
   } finally {
     loading.value = false;
+  }
+}
+
+/**
+ * 记录浏览量并把服务端返回的最新值写回本地显示，避免为刷新数字再请求一次详情
+ */
+async function recordView(id: number) {
+  if (!Number.isFinite(id)) return;
+  try {
+    const res = await articleApi.recordArticleView(id);
+    if (res.success && article.value && article.value.id === id) {
+      article.value.views = res.data.views;
+    }
+  } catch (e) {
+    console.warn('记录浏览量失败:', e);
   }
 }
 

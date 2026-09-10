@@ -105,31 +105,30 @@ class ArticleService {
     };
   }
 
-  async getArticleById(id: number, incrementView: boolean = true): Promise<Article | null> {
+  /**
+   * 获取文章详情（纯读，无副作用）
+   *
+   * 历史：本方法曾带 `incrementView` 参数并在内部自增 views，
+   * 导致"读接口写库"，调用方必须用 `?view=false` 关闭副作用，
+   * 且返回值需要手工 `views + 1` 修正。浏览计数现由 recordView() 显式承担。
+   */
+  async getArticleById(id: number): Promise<Article | null> {
     try {
       const article = await prisma.article.findUnique({ where: { id } });
       if (!article) return null;
 
-      // 浏览计数：编辑器等场景可传入 false 跳过
-      if (incrementView) {
-        await prisma.article.update({
-          where: { id },
-          data: { views: { increment: 1 } },
-        });
-      }
-
-      const commentCount = await prisma.comment.count({
-        where: { source_id: String(id), source_type: 'article' },
-      });
-
-      const author = await prisma.user.findUnique({
-        where: { id: article.author_id },
-        select: { id: true, username: true, avatar: true },
-      });
+      const [commentCount, author] = await Promise.all([
+        prisma.comment.count({
+          where: { source_id: String(id), source_type: 'article' },
+        }),
+        prisma.user.findUnique({
+          where: { id: article.author_id },
+          select: { id: true, username: true, avatar: true },
+        }),
+      ]);
 
       return {
         ...article,
-        views: incrementView ? article.views + 1 : article.views,
         comment_count: commentCount,
         author: author || undefined,
         created_at: article.created_at.toISOString(),
@@ -139,6 +138,40 @@ class ArticleService {
       logger.error(`获取文章详情失败 (ID: ${id}):`, error);
       throw new Error(`获取文章详情失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
+  }
+
+  /**
+   * 记录一次浏览（显式命令，与读取分离）
+   * @returns 自增后的浏览数；文章不存在时返回 null
+   */
+  async recordView(id: number): Promise<number | null> {
+    try {
+      const updated = await prisma.article.update({
+        where: { id },
+        data: { views: { increment: 1 } },
+        select: { views: true },
+      });
+      return updated.views;
+    } catch (error: any) {
+      // P2025: 目标记录不存在
+      if (error?.code === 'P2025') {
+        return null;
+      }
+      logger.error(`记录浏览失败 (ID: ${id}):`, error);
+      throw new Error(`记录浏览失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    }
+  }
+
+  /**
+   * 判断文章是否存在（轻量，只取主键）
+   * 用于替代此前"调用 getArticleById 仅为判断存在性"的写法。
+   */
+  async exists(id: number): Promise<boolean> {
+    const found = await prisma.article.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    return found !== null;
   }
 
   async getTopArticles(limit: number = 3): Promise<Article[]> {
@@ -208,8 +241,8 @@ class ArticleService {
     tags?: string;
   }): Promise<Article | null> {
     try {
-      const existing = await prisma.article.findUnique({ where: { id } });
-      if (!existing) return null;
+      // 存在性检查只取主键，不再取回正文
+      if (!(await this.exists(id))) return null;
 
       const article = await prisma.article.update({
         where: { id },
@@ -241,8 +274,8 @@ class ArticleService {
 
   async deleteArticle(id: number): Promise<boolean> {
     try {
-      const existing = await prisma.article.findUnique({ where: { id } });
-      if (!existing) return false;
+      // 存在性检查只取主键，不再取回正文
+      if (!(await this.exists(id))) return false;
 
       // 在事务中先清理关联评论（source_id为字符串，无外键级联），再删除文章
       await prisma.$transaction([

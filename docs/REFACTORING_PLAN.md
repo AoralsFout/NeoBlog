@@ -53,7 +53,7 @@ cd frontend && npx vue-tsc --build
 | 10 | 表格化音乐服务，删除 Prisma 回退路径 | 机制重复 | 低 | ✅ 已完成 |
 | 11 | 布局所有权移交 CSS | 分支膨胀 | 中 | ✅ 已完成 |
 | 12 | 引入文章查询协调器 | 职责分散 | 中 | ✅ 已完成 |
-| 13 | 浏览计数从 GET 副作用分离 | 职责分散 | 中 | ⬜ 待执行 |
+| 13 | 浏览计数从 GET 副作用分离 | 职责分散 | 中 | ✅ 已完成 |
 | 14 | 提取共享格式化/标签工具 | 机制重复 | 低 | ⬜ 待执行 |
 | 15 | MusicPlayer 状态收敛（阶段一：只读订阅） | 时序耦合 | 中 | ⬜ 待执行 |
 | 16 | MusicPlayer 引擎化（阶段二：单一状态源） | 时序耦合 | 高 | ⬜ 待执行 |
@@ -952,23 +952,56 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
    - **决策点**：旧 `?view=false` 参数忽略（无行为）。若担忧缓存/CDN 预取，记录但不实现去重。
 
 ### 验证
-- `npx tsc --noEmit` 与 `npx vue-tsc --build` 均 exit 0。
-- **人工回归清单**：
-  1. 打开文章详情 → 显示浏览量 +1，DB `views` 递增。
-  2. 刷新详情页 → 再次 +1（预期行为，与改动前一致）。
-  3. 打开文章**编辑器** → 浏览量**不变**。
-  4. 保存编辑 → 成功；`GET` 请求中**不含正文丢失**（详情仍正常显示 content）。
-  5. 删除文章 → 成功；删除前不存在性检查未取回正文（可用后端日志或 DB query log 确认）。
-  6. 站点统计卡片的浏览总数正确（`stats.service` 独立聚合，应同步递增）。
-- **性能对照**：删除操作的 SQL 查询数应从 5 降到 2。可用 Prisma query log（`config/database.ts:5` 在 development 已开启 `query` 日志）核对。
+- `npx tsc --noEmit`（后端）与 `npx vue-tsc --build`（前端）均 exit 0。
+- **已执行：浏览计数语义验证**（启动后端，直连 DB 读真实 views 值）：
+
+  | 断言 | 结果 |
+  |---|---|
+  | `GET /api/articles/1` | `200`，`views_in_body=55`，**DB 仍为 55（UNCHANGED=true）** |
+  | `GET /api/articles/1?view=false` | `200`，DB 仍为 55（旧参数被忽略，无副作用） |
+  | **`POST /api/articles/1/views`** | `200`，`returned_views=56`，**DB=56（INCREMENTED=true）** |
+  | 再次 `POST` | `returned=57`，`db=57`（连续计数正确） |
+  | `POST /api/articles/999999/views` | `404 NOT_FOUND` |
+  | `POST /api/articles/abc/views` | `400 INVALID_PARAMS` |
+  | `GET /api/articles/999999` | `404 NOT_FOUND`（读接口存在性语义未变） |
+  | 编辑器路径（仅 GET） | `EDITOR_LOAD_UNCHANGED=true` —— 打开编辑器不再计数 |
+  | 测试后恢复 | `RESTORED_VIEWS=55`（已把测试产生的 +2 还原） |
+
+  **`GET` 现在完全不改变 views、只有显式 `POST` 才计数**，是本步核心断言。
+  改动前 `GET` 会自增并返回 `views+1`。
+
+- **已执行：CRUD 路径验证**（确认 `exists()` 重构未破坏更新/删除）：
+
+  | 断言 | 结果 |
+  |---|---|
+  | `PATCH /api/articles/999999` | `404 NOT_FOUND / 文章不存在` |
+  | `DELETE /api/articles/999999` | `404 NOT_FOUND / 文章不存在` |
+  | 创建临时文章 + 评论 → `DELETE` | `200`；`COMMENTS_AFTER_DELETE=0`、`ARTICLE_LEFT=0`（事务清理关联评论仍生效） |
+  | 测试后数据核对 | 文章仍为 2 篇（id=1 views=55、id=2 views=39），评论总数 3 —— 与基线一致 |
+
+- **未执行**：查询次数（5 → 2）的实测计数。理论上删除路径由
+  "查全字段 + 查评论数 + 查作者 + 再查一次 + 事务删除"降为"轻量 exists + 事务删除"。
+  我未采信理论值，故不声称已实测该数字。
+- **未执行**：浏览器端详情页浏览量自增回显（需真实浏览器）。已列入待补验清单。
+
+### 状态
+✅ 已完成（双端类型检查 + 浏览计数语义 + CRUD 路径实测通过）
 
 ### 收益
-- 消除 `incrementView` 布尔分支（后端 2 处 + 前端 2 处）。
-- 删除/更新路径查询数 5 → 2；消除"返回值需手工 +1 修正"的易错逻辑。
-- GET 恢复幂等语义（可被安全重试/预取）。
+- 消除 `incrementView` 布尔分支：后端 `getArticleById` 参数、controller 的
+  `req.query.view !== 'false'`、前端 `getArticleById(id, incrementView)` 与
+  `ArticleEditor` 的第二参数，共 4 处。
+- 删除 `views: incrementView ? article.views + 1 : article.views` 这一需要手工修正返回值的易错逻辑；
+  改为由 `recordView` 返回数据库自增后的真实值。
+- `updateArticle` / `deleteArticle` 的存在性检查从"取回整篇正文（LongText）后丢弃"
+  改为轻量 `exists()`（只取主键）。
+- GET 恢复幂等语义（可被安全重试/预取而不虚增浏览数）。
 
 ### 风险
-**中**。前端需两步配合（加载后再报计数），改造期间若只改后端而前端仍传 `?view=false`，计数会**静默丢失**。因此本步必须在**同一次提交**内同时改后端与前端。
+**中**。前端必须配合：若只改后端而前端仍指望 GET 计数，浏览数会**静默停止增长**
+（不是报错）。因此本步在**同一次提交**内同时改了后端与前端。
+`recordView` 失败仅 `console.warn` 且不影响阅读，属有意的降级。
+**兼容性**：旧 `?view=false` 参数被忽略（不再需要），但不报错，旧客户端不会因此失败。
 
 ---
 
@@ -1135,6 +1168,7 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 | 9 | `869c386` | — | 新增 `composables/useTimePeriod.ts`；时段边界表与问候语映射成为唯一来源，删除 2 条 7 分支 if 链与 `lastDate`。24 小时逐点等价性验证全部一致。 |
 | 10 | `d3486bc` | — | 删除 `@ts-ignore`、`$queryRaw` 回退与字符串错误匹配，改用显式 `select` 的 Prisma 查询。实测 19 条数据逐字段对等（`TOTAL_DIFFS=0`）。确认仓库无 `prisma/migrations`，schema 由外部维护。 |
 | 11 | `efbede1` | — | 布局改由 `data-layout` + CSS grid areas 拥有；删除 5 个 JS 状态与 resize 监听；`RightSidebar` 由 2 个挂载点收敛为 1 个（消除布局切换时的重复请求与计时器重建）。两栏时右栏位置的 9 组合目视核对待补验（残余风险最高项）。 |
-| 12 | `待填` | — | 新增 `composables/useArticleQuery.ts`（路由 query 为唯一状态源，含竞态保护）；`Articles.vue` 本地 7 个状态清零，加载触发路径 2→1。URL 形态与真实标签过滤实测通过。有意的 URL 规范化：省略 `sort=time`/`page=1`。`ArticleDetail` 改造并入步 13。 |
+| 12 | `c019908` | — | 新增 `composables/useArticleQuery.ts`（路由 query 为唯一状态源，含竞态保护）；`Articles.vue` 本地 7 个状态清零，加载触发路径 2→1。URL 形态与真实标签过滤实测通过。有意的 URL 规范化：省略 `sort=time`/`page=1`。`ArticleDetail` 改造并入步 13。 |
+| 13 | `待填` | — | `GET /api/articles/:id` 改为纯读，新增 `POST /api/articles/:id/views` 显式计数；`exists()` 替代"取回正文只为判存在"。实测：GET 不改 views、POST 正确自增、编辑器不计、CRUD 与事务清理正常。旧 `?view=false` 参数被忽略且不报错。 |
 
 > 每步完成后在此表追加一行：步骤号、commit hash、日期、实施中的偏差或发现。

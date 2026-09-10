@@ -191,12 +191,16 @@ export const articleApi = {
     get<{ success: boolean; data: any[] }>(`/api/articles/top`),
 
   /**
-   * 获取文章详情
-   * @param id 文章ID
-   * @param incrementView 是否计入浏览（编辑器加载时为false）
+   * 获取文章详情（纯读，不会改变浏览数）
    */
-  getArticleById: (id: number, incrementView: boolean = true) =>
-    get<{ success: boolean; data: any }>(`/api/articles/${id}${incrementView ? '' : '?view=false'}`),
+  getArticleById: (id: number) =>
+    get<{ success: boolean; data: any }>(`/api/articles/${id}`),
+
+  /**
+   * 记录一次浏览（显式写操作，由详情页在加载成功后调用）
+   */
+  recordArticleView: (id: number) =>
+    post<{ success: boolean; data: { views: number } }>(`/api/articles/${id}/views`),
 
   createArticle: (data: { title: string; content: string; summary?: string; cover_image?: string; tags?: string }) =>
     post<{ success: boolean; data: any }>('/api/articles', data),

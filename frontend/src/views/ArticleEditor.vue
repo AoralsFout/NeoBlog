@@ -146,7 +146,8 @@ onMounted(async () => {
     loading.value = true;
     try {
       // view=false：编辑器加载不增加浏览量
-      const res = await articleApi.getArticleById(articleId.value!, false);
+      // 编辑器加载不会产生浏览计数（计数已与读取分离，无需传入标志）
+      const res = await articleApi.getArticleById(articleId.value!);
       if (res.success && res.data) {
         const a = res.data;
         title.value = a.title;

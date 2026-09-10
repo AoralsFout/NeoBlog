@@ -52,6 +52,7 @@ import {
   createArticle,
   updateArticle,
   deleteArticle,
+  recordArticleView,
 } from '../controllers/article.controller';
 import {
   getSiteStats,
@@ -135,6 +136,8 @@ app.post('/api/comments/:id/reaction', authenticate, toggleReaction);
 app.get('/api/articles/top', getTopArticles);
 app.get('/api/articles', getArticles);
 app.get('/api/articles/:id', getArticleById);
+// 浏览计数是显式写操作，不再作为 GET /api/articles/:id 的副作用
+app.post('/api/articles/:id/views', recordArticleView);
 app.post('/api/articles', authenticate, requireAdmin, createArticle);
 app.patch('/api/articles/:id', authenticate, requireAdmin, updateArticle);
 app.delete('/api/articles/:id', authenticate, requireAdmin, deleteArticle);
