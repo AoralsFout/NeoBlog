@@ -58,12 +58,12 @@
                             <div class="dropdown-divider"></div>
 
                             <button @click="handleLogout" class="dropdown-item logout-item"
-                                :disabled="userStore.isLoading">
+                                :disabled="userStore.pending.logout">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                                     <path
                                         d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z" />
                                 </svg>
-                                {{ userStore.isLoading ? '登出中...' : '退出登录' }}
+                                {{ userStore.pending.logout ? '登出中...' : '退出登录' }}
                             </button>
                         </div>
                     </transition>
@@ -81,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, onBeforeMount } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/user';
 import Button from './Button.vue';
@@ -94,10 +94,8 @@ const scrollRatio = ref(0);
 const showUserMenu = ref(false);
 const showMobileNav = ref(false);
 
-// 初始化用户状态
-onBeforeMount(async () => {
-    await userStore.initUser();
-});
+// 说明：会话初始化由 router 全局守卫负责（唯一启动协调点），
+// 本组件不再调用 initUser，避免重复请求。
 
 const updateScroll = () => {
     scrollY.value = window.scrollY;

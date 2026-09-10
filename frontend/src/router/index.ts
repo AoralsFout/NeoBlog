@@ -64,14 +64,18 @@ const router = createRouter({
 })
 
 // 全局前置守卫
+// 会话初始化由守卫统一负责（唯一启动协调点）：
+// - App.vue / Navigation.vue 不再各自触发 initUser，避免重复请求与竞态
+// - initUser 内部对未登录/令牌失效做了静默处理，不会阻塞公开路由
 router.beforeEach(async (to) => {
   const userStore = useUserStore()
 
+  // 首次进入时确保会话状态就绪（幂等，内部有并发去重）
+  if (!userStore.bootstrapped) {
+    await userStore.initUser()
+  }
+
   if (to.meta.requiresAdmin) {
-    // 页面刷新时用户状态尚未加载：先等待初始化完成再判断
-    if (!userStore.isAuthenticated) {
-      await userStore.initUser()
-    }
     if (!userStore.isAuthenticated || !userStore.isAdmin) {
       return '/'
     }

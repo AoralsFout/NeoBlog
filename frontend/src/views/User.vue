@@ -5,7 +5,7 @@
       <p>管理您的账户和个人信息</p>
     </div>
 
-    <div v-if="userStore.isLoading && !userStore.currentUser" class="loading">
+    <div v-if="userStore.isBootstrapping && !userStore.currentUser" class="loading">
       <div class="spinner"></div>
       <p>加载中...</p>
     </div>
@@ -30,7 +30,7 @@
               <div v-else class="avatar-placeholder">
                 {{ userStore.currentUser?.username?.charAt(0).toUpperCase() || 'U' }}
               </div>
-              <Button class="change-avatar-btn" @click="changeAvatar" :disabled="isUploadingAvatar || userStore.isLoading">
+              <Button class="change-avatar-btn" @click="changeAvatar" :disabled="isUploadingAvatar || userStore.pending.uploadAvatar">
                 {{ isUploadingAvatar ? '上传中...' : '上传头像' }}
               </Button>
               <p v-if="avatarMessage" class="avatar-message" :class="{ error: avatarError }">{{ avatarMessage }}</p>
@@ -155,8 +155,8 @@
           </div>
         </div>
 
-        <Button @click="handleLogout" type="danger" :disabled="userStore.isLoading">
-          {{ userStore.isLoading ? '登出中...' : '退出登录' }}
+        <Button @click="handleLogout" type="danger" :disabled="userStore.pending.logout">
+          {{ userStore.pending.logout ? '登出中...' : '退出登录' }}
         </Button>
       </div>
     </div>

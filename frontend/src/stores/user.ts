@@ -7,8 +7,22 @@ export const useUserStore = defineStore("user", () => {
   // 当前用户信息
   const currentUser = ref<User | null>(null);
 
-  // 加载状态
-  const isLoading = ref(false);
+  // 会话是否已完成首次初始化（无论成功或未登录）
+  // 注意：不能用 currentUser 是否为 null 代替——未登录时它永远是 null，
+  // 会导致每个调用方都重新发起一次 /api/auth/me 请求
+  const bootstrapped = ref(false);
+
+  // 会话初始化中的加载态（仅 bootstrapped 之前为 true）
+  const isBootstrapping = ref(false);
+
+  // 按操作区分的进行中状态
+  // 历史上这里是单一的 isLoading，被 fetchCurrentUser/logout/updateUserProfile/uploadAvatar
+  // 共用，导致用户上传头像时导航栏登出按钮显示"登出中..."
+  const pending = ref({
+    logout: false,
+    updateProfile: false,
+    uploadAvatar: false,
+  });
 
   // 错误信息
   const error = ref<string | null>(null);
@@ -28,20 +42,23 @@ export const useUserStore = defineStore("user", () => {
 
   /**
    * 初始化用户状态（通过HttpOnly Cookie向服务端获取）
-   * 页面刷新后由各组件/路由守卫调用，重复调用会被去重
+   * 页面刷新后由路由守卫统一调用，重复调用会被去重
    */
   const initUser = (): Promise<void> => {
-    if (currentUser.value) {
+    if (bootstrapped.value) {
       return Promise.resolve();
     }
     if (!initPromise) {
       initPromise = (async () => {
+        isBootstrapping.value = true;
         try {
           await fetchCurrentUser();
         } catch {
           // 未登录或令牌无效：静默保持未登录状态
           currentUser.value = null;
         } finally {
+          isBootstrapping.value = false;
+          bootstrapped.value = true;
           initPromise = null;
         }
       })();
@@ -51,24 +68,22 @@ export const useUserStore = defineStore("user", () => {
 
   /**
    * 获取当前用户信息
+   * @returns 是否成功取得用户（未登录时为 false）
    */
-  const fetchCurrentUser = async () => {
-    isLoading.value = true;
+  const fetchCurrentUser = async (): Promise<boolean> => {
     error.value = null;
-
     try {
       const response = await authApi.getCurrentUser();
       if (response.success && response.data) {
         currentUser.value = response.data;
-      } else {
-        throw new Error("获取用户信息失败");
+        return true;
       }
+      currentUser.value = null;
+      return false;
     } catch (err) {
       error.value = err instanceof Error ? err.message : "获取用户信息失败";
       currentUser.value = null;
       throw err;
-    } finally {
-      isLoading.value = false;
     }
   };
 
@@ -84,12 +99,15 @@ export const useUserStore = defineStore("user", () => {
    */
   const handleOAuthCallback = async (): Promise<boolean> => {
     try {
-      await fetchCurrentUser();
-      return true;
+      const ok = await fetchCurrentUser();
+      return ok;
     } catch (err) {
       console.error("OAuth回调处理失败:", err);
       currentUser.value = null;
       return false;
+    } finally {
+      // 回调页已取得权威结果，标记会话已初始化，避免守卫重复请求
+      bootstrapped.value = true;
     }
   };
 
@@ -97,7 +115,7 @@ export const useUserStore = defineStore("user", () => {
    * 用户登出
    */
   const logout = async () => {
-    isLoading.value = true;
+    pending.value.logout = true;
     error.value = null;
 
     try {
@@ -108,7 +126,7 @@ export const useUserStore = defineStore("user", () => {
       // 即使API请求失败，也清除本地状态
     } finally {
       currentUser.value = null;
-      isLoading.value = false;
+      pending.value.logout = false;
     }
   };
 
@@ -116,7 +134,7 @@ export const useUserStore = defineStore("user", () => {
    * 更新用户信息
    */
   const updateUserProfile = async (userData: Partial<User>) => {
-    isLoading.value = true;
+    pending.value.updateProfile = true;
     error.value = null;
 
     try {
@@ -146,7 +164,7 @@ export const useUserStore = defineStore("user", () => {
       error.value = err instanceof Error ? err.message : "更新用户信息失败";
       throw err;
     } finally {
-      isLoading.value = false;
+      pending.value.updateProfile = false;
     }
   };
 
@@ -154,7 +172,7 @@ export const useUserStore = defineStore("user", () => {
    * 上传用户头像
    */
   const uploadAvatar = async (file: File) => {
-    isLoading.value = true;
+    pending.value.uploadAvatar = true;
     error.value = null;
 
     try {
@@ -180,7 +198,7 @@ export const useUserStore = defineStore("user", () => {
       error.value = err instanceof Error ? err.message : "头像上传失败";
       throw err;
     } finally {
-      isLoading.value = false;
+      pending.value.uploadAvatar = false;
     }
   };
 
@@ -194,7 +212,9 @@ export const useUserStore = defineStore("user", () => {
   return {
     // 状态
     currentUser,
-    isLoading,
+    bootstrapped,
+    isBootstrapping,
+    pending,
     error,
 
     // 计算属性

@@ -23,8 +23,8 @@
             <router-link to="/user" class="btn btn-primary">
               前往个人中心
             </router-link>
-            <button @click="handleLogout" class="btn btn-secondary" :disabled="userStore.isLoading">
-              {{ userStore.isLoading ? '登出中...' : '退出登录' }}
+            <button @click="handleLogout" class="btn btn-secondary" :disabled="userStore.pending.logout">
+              {{ userStore.pending.logout ? '登出中...' : '退出登录' }}
             </button>
           </div>
         </div>
@@ -41,7 +41,7 @@
               <h3>Natayark</h3>
               <p>使用 Natayark 账户进行安全登录</p>
             </div>
-            <Button @click="handleLogin" size="lg" :disabled="userStore.isLoading">{{ userStore.isLoading ? '跳转中...' :
+            <Button @click="handleLogin" size="lg" :disabled="userStore.isBootstrapping">{{ userStore.isBootstrapping ? '跳转中...' :
               '立即登录' }}</Button>
           </div>
 
