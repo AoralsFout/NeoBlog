@@ -1,7 +1,7 @@
 import { User, Role, Status } from '../types/user';
 import prisma from '../config/database';
 import oauthService from './oauth.service';
-import { generateToken, JwtPayload } from '../utils/jwt';
+import { generateToken, verifyToken, JwtPayload } from '../utils/jwt';
 import logger from '../utils/logger';
 import { NatayarkUser } from './oauth.service';
 
@@ -140,11 +140,7 @@ class AuthService {
    * @returns 用户ID或null
    */
   async verifyUserToken(token: string): Promise<number | null> {
-    const payload = await Promise.resolve().then(() => {
-      // 这里使用同步验证，因为verifyToken是同步的
-      const result = require('../utils/jwt').verifyToken(token);
-      return result;
-    });
+    const payload = verifyToken(token);
 
     if (!payload) {
       return null;

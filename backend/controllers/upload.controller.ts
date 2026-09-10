@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { uploadSingle, getFileUrl, getRelativePath, deleteFile, verifyImageSignature } from '../utils/upload';
-import { userService } from '../services';
+import userService from '../services/user.service';
 import logger from '../utils/logger';
 
 /**

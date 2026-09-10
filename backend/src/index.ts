@@ -77,9 +77,12 @@ app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
 // 速率限制
+// 全站 API 限流阈值（唯一的定义处；如需按端点区分，应在此处扩展为策略表而非散落常量）
+const API_RATE_LIMIT_MAX = 1000; // 每个IP在窗口期内允许的请求数
+
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15分钟
-  max: 1000, // 每个IP限制1000个请求
+  max: API_RATE_LIMIT_MAX,
   message: '请求过于频繁，请稍后再试。',
   standardHeaders: true,
   legacyHeaders: false,

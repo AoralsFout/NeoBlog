@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
-import { authService, oauthService } from '../services';
+import authService from '../services/auth.service';
+import oauthService from '../services/oauth.service';
 import logger from '../utils/logger';
 import { env } from '../config/env';
 import { AUTH_COOKIE_NAME } from '../config/auth';
