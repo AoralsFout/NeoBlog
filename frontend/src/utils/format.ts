@@ -66,7 +66,7 @@ export function formatDuration(seconds: number): string {
 }
 
 /**
- * 千分位数字（站点统计）
+ * 千分位数字（站点统计，RightSidebar 使用）
  */
 export function formatNumber(value: number): string {
   return value.toLocaleString('zh-CN');

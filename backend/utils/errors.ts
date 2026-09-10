@@ -34,20 +34,6 @@ export class ValidationError extends AppError {
   }
 }
 
-/** 401 未认证 */
-export class UnauthorizedError extends AppError {
-  constructor(message = '请先登录', code = 'UNAUTHORIZED') {
-    super(message, 401, code);
-  }
-}
-
-/** 403 无权限 */
-export class ForbiddenError extends AppError {
-  constructor(message = '无权执行该操作', code = 'FORBIDDEN') {
-    super(message, 403, code);
-  }
-}
-
 /** 404 资源不存在 */
 export class NotFoundError extends AppError {
   constructor(message: string, code = 'NOT_FOUND') {

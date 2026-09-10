@@ -322,6 +322,7 @@
 <script setup lang="ts">
 import { onMounted, ref, nextTick, onUnmounted, computed, watch } from 'vue'
 import { useThemeColors, parseHexColor } from '@/composables/useThemeColors'
+import { formatDuration } from '@/utils/format'
 
 interface MusicItem {
     id: number
@@ -879,12 +880,8 @@ const duration = ref<number>(0)                         // 总时长
 const bufferedRanges = ref<Array<{ start: number, end: number }>>([]) // 缓冲区间
 const displayDuration = ref<string>('--:-- / --:--')    // 最终显示时间,格式 mm:ss / mm:ss
 
-// 格式化时间为 mm:ss
-const formatTime = (time: number): string => {
-    const minutes = Math.floor(time / 60)
-    const seconds = Math.floor(time % 60)
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-}
+// 格式化时间为 mm:ss（共享实现见 utils/format，避免与此前副本重复）
+const formatTime = (time: number): string => formatDuration(time)
 
 // 更新进度条显示
 const updateProgressBar = () => {

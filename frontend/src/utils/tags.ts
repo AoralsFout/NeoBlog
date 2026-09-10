@@ -21,10 +21,3 @@ export function parseTags(raw: string | null | undefined): string[] {
     .map((tag) => tag.trim())
     .filter(Boolean);
 }
-
-/**
- * 数组还原为逗号分隔串（提交表单时使用）
- */
-export function joinTags(tags: readonly string[]): string {
-  return tags.map((tag) => tag.trim()).filter(Boolean).join(',');
-}

@@ -37,17 +37,6 @@ export const TIP_BY_PERIOD: Record<Period, string> = {
   midnight: '夜深啦，早点休息哦，好梦～',
 };
 
-/** 各时段的展示名（当前 UI 未使用，保留以便统一扩展） */
-export const LABEL_BY_PERIOD: Record<Period, string> = {
-  'deep-night': '凌晨',
-  dawn: '清晨',
-  morning: '上午',
-  noon: '正午',
-  afternoon: '下午',
-  dusk: '傍晚',
-  midnight: '深夜',
-};
-
 /** 纯函数：由小时数得到时段 */
 export const periodOfHour = (hour: number): Period => {
   const found = PERIOD_BOUNDARIES.find((entry) => hour < entry.beforeHour);

@@ -18,9 +18,6 @@ import type { User, Role, Status } from '../types/user';
 /** API 可接受的 role 值域（由类型派生，避免与类型定义脱节） */
 export const API_ROLES = ['admin', 'member'] as const satisfies readonly Role[];
 
-/** API 可接受的 status 值域（由类型派生） */
-export const API_STATUSES = ['normal', 'banned', 'frozen'] as const satisfies readonly Status[];
-
 /**
  * 判断任意输入是否是合法的 API role 值
  */
@@ -28,10 +25,13 @@ export const isApiRole = (value: unknown): value is Role =>
   typeof value === 'string' && (API_ROLES as readonly string[]).includes(value.toLowerCase());
 
 /**
- * 判断任意输入是否是合法的 API status 值
+ * 判断任意输入是否是合法的 API status 值。
+ *
+ * 值域直接内联，未像 API_ROLES 那样派生为常量——因为后端只有这一处
+ * 需要它（没有第二个消费方）。若将来出现第二个消费方，再提取常量。
  */
 export const isApiStatus = (value: unknown): value is Status =>
-  typeof value === 'string' && (API_STATUSES as readonly string[]).includes(value.toLowerCase());
+  typeof value === 'string' && ['normal', 'banned', 'frozen'].includes(value.toLowerCase());
 
 /**
  * API role → 数据库枚举值（大写）

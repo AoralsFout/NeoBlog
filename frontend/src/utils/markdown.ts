@@ -37,7 +37,7 @@ const SANITIZE_CONFIG = {
   FORBID_TAGS: ['style', 'form', 'input', 'iframe', 'object', 'embed'],
 };
 
-export const sanitizeHtml = (html: string): string =>
+const sanitizeHtml = (html: string): string =>
   DOMPurify.sanitize(html, SANITIZE_CONFIG);
 
 /** 标题 id 前缀，便于定位与调试 */
