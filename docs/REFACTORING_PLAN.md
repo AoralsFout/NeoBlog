@@ -1332,4 +1332,33 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 2. 步骤 15 把两处"看似矛盾"的逻辑改成一致，**误判了有意的反向设计**。
    视觉/动画类行为在无浏览器时不应"顺手统一"，应保留原状并标注疑问。
 
+### 普通用户（member）权限分支验证（补齐此前缺口）
+
+此前验证只覆盖管理员与未登录两种身份，member 视角只能从代码推断。
+经用户授权，建临时 member 账号实测后删除（共 19 条断言，**全部 PASS**）：
+
+| 类别 | 断言 | 结果 |
+|---|---|---|
+| 管理员专属被拒 | `/api/users`、`/api/users/search`、`/api/system`、`/api/routes` | 均 `403 FORBIDDEN` |
+| 管理员专属被拒 | `POST/PATCH/DELETE /api/articles`、`DELETE /api/upload` | 均 `403 FORBIDDEN` |
+| 跨用户被拒 | `GET /api/users/1`、`PATCH /api/users/1`（改他人） | 均 `403 FORBIDDEN` |
+| 自己的资源可用 | `GET /api/users/:self`、`GET /api/auth/me`、`PATCH /api/users/:self` | 均 `200`；`me` 返回 `role=member status=normal` |
+| **不可自提权** | `PATCH /api/users/:self {role:"admin"}` | 返回 `200` 但 **DB 仍为 `MEMBER`** |
+| **不可自禁** | `PATCH /api/users/:self {status:"banned"}` | 返回 `200` 但 **DB 仍为 `NORMAL`** |
+| 普通用户可写 | `POST /api/comments`、`POST /api/comments/:id/reaction` | `201` / `200` |
+| 未登录 | `POST /api/comments` / `GET /api/comments` | `401 UNAUTHORIZED` / `200`（公开可读） |
+
+**这两条"返回 200 但字段被静默忽略"（提权/自禁）是有意的设计**：
+`user.controller.ts` 只在调用者是 admin 时才处理 `role`/`status` 字段。
+对 member 而言字段被忽略且不报错——不泄露"该字段存在但你没权限"的信息。
+
+**测试数据清理（含一次自查发现的问题）**：
+- 测试账号、其评论、其 reaction 均已删除；用户表回到仅剩管理员 1 人。
+- **自查发现一处数据不一致**：测试账号给 comment 20 点赞使 `likes_count` 变为 2，
+  删除该账号时其 reaction 被级联删除，但 `likes_count` 未回退，导致
+  `stored(2) != actual(1)`。已按实际 reaction 数重算恢复（现在三条评论均为 `1/0`）。
+  这是**测试造成的副作用**，不是应用缺陷——应用内的 toggleReaction 在事务里
+  重算计数，问题出在我直接删用户绕过了它。
+- 文章 views 保持 id=1:55、id=2:41；未发现其他改动。
+
 > 每步完成后在此表追加一行：步骤号、commit hash、日期、实施中的偏差或发现。
