@@ -142,7 +142,7 @@
 
 <script setup lang="ts">
 import Card from '@/components/Card.vue';
-import { onMounted, onUnmounted, ref, computed } from 'vue';
+import { onMounted, ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { statsApi } from '@/utils/api';
 
@@ -213,7 +213,8 @@ const loadSidebarData = async () => {
 };
 
 // ===== 时间段与风景配置 =====
-type Period = 'deep-night' | 'dawn' | 'morning' | 'noon' | 'afternoon' | 'dusk' | 'midnight';
+import type { Period } from '@/composables/useTimePeriod';
+import { useTimePeriod } from '@/composables/useTimePeriod';
 
 interface Scene {
     sky: [string, string];
@@ -299,16 +300,6 @@ const SCENES: Record<Period, Scene> = {
     },
 };
 
-const getPeriod = (hour: number): Period => {
-    if (hour < 5) return 'deep-night';
-    if (hour < 9) return 'dawn';
-    if (hour < 12) return 'morning';
-    if (hour < 14) return 'noon';
-    if (hour < 18) return 'afternoon';
-    if (hour < 22) return 'dusk';
-    return 'midnight';
-};
-
 // 每实例唯一的渐变/遮罩ID，避免多实例时SVG ID冲突
 const uid = Math.random().toString(36).slice(2, 8);
 const skyId = `sky-${uid}`;
@@ -327,76 +318,13 @@ const stars = [
     { x: 30, y: 66, r: 0.6 }, { x: 204, y: 40, r: 0.6 },
 ];
 
-const time = ref<string>("--:--:--");
-const timeTips = ref<string>("加载中");
-const period = ref<Period>(getPeriod(new Date().getHours()));
+// 时钟、时段与问候语统一由 composable 提供
+// （边界表是唯一来源；问候语仅在跨段时更新，不再手工比对 prev/cur）
+const { time, period, tip: timeTips } = useTimePeriod();
 const scene = computed(() => SCENES[period.value]);
-const timer = ref<number | null>(null);
-const lastDate = ref<Date>(new Date());
-
-if (lastDate.value.getHours() >= 0 && lastDate.value.getHours() < 5) {
-    timeTips.value = "明月高照，你的心里正在想什么呢？";
-} else if (lastDate.value.getHours() >= 5 && lastDate.value.getHours() < 9) {
-    timeTips.value = "早上好呀！新的一天开始啦，记得吃早餐哦～(≧∇≦)ﾉ";
-} else if (lastDate.value.getHours() >= 9 && lastDate.value.getHours() < 12) {
-    timeTips.value = "上午好！工作/学习加油鸭，保持元气满满！";
-} else if (lastDate.value.getHours() >= 12 && lastDate.value.getHours() < 14) {
-    timeTips.value = "中午好！吃饱饱才能有力气下午继续冲呀～";
-} else if (lastDate.value.getHours() >= 14 && lastDate.value.getHours() < 18) {
-    timeTips.value = "下午好！喝杯茶提提神，效率加倍哦～";
-} else if (lastDate.value.getHours() >= 18 && lastDate.value.getHours() < 22) {
-    timeTips.value = "今天就要结束了！辛苦了一天，好好放松一下吧～";
-} else if (lastDate.value.getHours() >= 22) {
-    timeTips.value = "夜深啦，早点休息哦，好梦～";
-}
-
-const updateTime = () => {
-    const date = new Date();
-    // 更新时间
-    time.value = `${padZero(date.getHours())}:${padZero(date.getMinutes())}:${padZero(date.getSeconds())}`;
-    // 更新风景时段（真实时间）
-    period.value = getPeriod(date.getHours());
-
-    // 更新提示
-    const cur = date.getHours();
-    const prev = lastDate.value.getHours();
-    if (cur >= 0 && cur < 5 && prev >= 5) {
-        timeTips.value = "明月高照，你的心里正在想什么呢？";
-        lastDate.value = date;
-    } else if (cur >= 5 && cur < 9 && (prev < 5 || prev >= 9)) {
-        timeTips.value = "早上好呀！新的一天开始啦，记得吃早餐哦～(≧∇≦)ﾉ";
-        lastDate.value = date;
-    } else if (cur >= 9 && cur < 12 && (prev < 9 || prev >= 12)) {
-        timeTips.value = "上午好！工作/学习加油鸭，保持元气满满！";
-        lastDate.value = date;
-    } else if (cur >= 12 && cur < 14 && (prev < 12 || prev >= 14)) {
-        timeTips.value = "中午好！吃饱饱才能有力气下午继续冲呀～";
-        lastDate.value = date;
-    } else if (cur >= 14 && cur < 18 && (prev < 14 || prev >= 18)) {
-        timeTips.value = "下午好！喝杯茶提提神，效率加倍哦～";
-        lastDate.value = date;
-    } else if (cur >= 18 && cur < 22 && (prev < 18 || prev >= 22)) {
-        timeTips.value = "今天就要结束了！辛苦了一天，好好放松一下吧～";
-        lastDate.value = date;
-    } else if (cur >= 22 && prev < 22) {
-        timeTips.value = "夜深啦，早点休息哦，好梦～";
-        lastDate.value = date;
-    }
-};
-
-const padZero = (num: number) => {
-    return num < 10 ? `0${num}` : num;
-};
 
 onMounted(() => {
-    timer.value = setInterval(updateTime, 1000);
     loadSidebarData();
-});
-
-onUnmounted(() => {
-    if (timer.value) {
-        clearInterval(timer.value);
-    }
 });
 </script>
 

@@ -49,7 +49,7 @@ cd frontend && npx vue-tsc --build
 | 6 | 收敛会话启动流程，拆分 isLoading | 时序耦合 | 低-中 | ✅ 已完成 |
 | 7 | 统一 Markdown 渲染与目录大纲 | 职责分散 | 低 | ✅ 已完成 |
 | 8 | 统一外观下发通道（主题/圆角） | 机制重复 | 低 | ✅ 已完成 |
-| 9 | 收敛时间段概念为纯函数 | 机制重复 | 低 | ⬜ 待执行 |
+| 9 | 收敛时间段概念为纯函数 | 机制重复 | 低 | ✅ 已完成 |
 | 10 | 表格化音乐服务，删除 Prisma 回退路径 | 机制重复 | 低 | ⬜ 待执行 |
 | 11 | 布局所有权移交 CSS | 分支膨胀 | 中 | ⬜ 待执行 |
 | 12 | 引入文章查询协调器 | 职责分散 | 中 | ⬜ 待执行 |
@@ -636,19 +636,39 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 
 ### 验证
 - `npx vue-tsc --build` exit 0。
-- **人工回归清单**：
-  1. 右侧栏时钟每秒跳动、格式 `HH:mm:ss`。
-  2. 风景 SVG 与时段匹配（可用 DevTools 改系统时间或临时改 `Date` 验证边界）。
-  3. 逐个边界核对：`04:59→05:00`、`08:59→09:00`、`11:59→12:00`、`13:59→14:00`、`17:59→18:00`、`21:59→22:00`、`23:59→00:00`，风景与问候语均在跨段时切换一次。
-  4. 未跨段时问候语**不刷新**（当前行为：仅在跨段时更新）。
-  5. 离开首页再返回 → 组件正常挂载，`setInterval` 无泄漏（重复进出 5 次观察计时器数量）。
+- **已执行：24 小时逐点等价性验证**（脚本从 `useTimePeriod.ts` 抽取边界表，
+  与 `RightSidebar.vue` 改动前的 `getPeriod` 逐小时比对）：
+
+  | 断言 | 结果 |
+  |---|---|
+  | 边界表条目数 | 7（`5/9/12/14/18/22/24`） |
+  | `HOUR_MISMATCHES` | `[]` —— **24 个小时全部一致** |
+  | `TIP_BY_PERIOD` 键 | 7 个，与 `Period` 联合类型完全对应，`MISSING_TIPS=[]` |
+  | `SCENES` 键（RightSidebar） | 7 个，`MISSING_SCENES=[]` |
+
+  该项证明重构未改变任何时段判定结果。
+
+- **未执行**：浏览器端目视回归（时钟每秒跳动、跨段时风景与问候语各切换一次、
+  未跨段时问候语不刷新、重复进出首页无计时器泄漏）。需要真实浏览器与时间推进，
+  已列入待补验清单。
+
+### 状态
+✅ 已完成（类型检查 + 24 小时等价性验证通过；浏览器目视回归待补验）
 
 ### 收益
-- 边界常量 3 份 → 1；7 分支 `if` 链 2 条 → 0（改查表）。
-- 删除 `lastDate` ref 与顶层副作用；`updateTime` 从 33 行降至约 5 行。
+- 时段边界常量 3 份 → 1 份（`PERIOD_BOUNDARIES` 表）。
+- 7 分支 `if/else if` 链 2 条 → 0（改查表 + `watch(period)`）。
+- 删除 `lastDate` ref（其唯一作用是记录"上次提示所属时段"）与
+  `padZero` 局部工具函数（移入 composable）。
+- 删除组件内的 `setInterval` 与 `onUnmounted` 清理（改由 composable 的
+  `onScopeDispose` 统一管理，避免遗漏清理）。
+- 问候语更新语义从"每秒用 prev/cur 手工比对"改为"`watch(period)` 仅在跨段时写入"。
+- `RightSidebar.vue` 从 562 行降至约 470 行。
 
 ### 风险
-**低**。行为可逐边界对照验证。注意保持"仅跨段时更新问候语"的现有行为，不要退化为每秒重置。
+**低**。行为已逐小时验证等价。
+**未纳入本步**：`useBackgroundAnimation.ts:29` 的壁纸固定 `15000ms` 切换间隔
+（计划中已说明不强行与时段耦合——其语义待定，改动它属于行为变更而非结构收敛）。
 
 ---
 
@@ -1014,6 +1034,7 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 | 5 | `0e9bd86` | — | 新增 `backend/utils/errors.ts` 与统一错误中间件，4 处字符串匹配判定清零。发现并修复"409 分支不可达"缺陷（P4 由 500→409）。P2 语义错误（应为 400）刻意保留 500 并记录待决。 |
 | 6 | `55949f4` | — | 会话初始化入口 4→1（路由守卫）；`bootstrapped` 取代"用 currentUser 判幂等"；单一 `isLoading` 拆为 `isBootstrapping` + `pending.{logout,updateProfile,uploadAvatar}`。静态验证通过；浏览器回归清单待补验。`vite build` 受沙箱 `spawn EPERM` 限制未能执行。 |
 | 7 | `0abfb2d` | — | 新增 `utils/markdown.ts` 统一渲染与大纲提取；删除正则反解析与模块级计数器。**发现并修复既有缺陷**：旧代码的 `heading({text})` 在 marked v18 下使标题渲染为 `undefined`。保留 `articleStore` 传递大纲（provide/inject 回退方案）。 |
-| 8 | `待填` | — | 新增 `utils/appearance.ts` + `composables/useThemeColors.ts`；圆角改由 `data-radius` + CSS 表达，删除 JS 表格与 switch。修复 `Settings.vue` 预览值与实际值不一致的 bug；顺带修复主题 store 未校验 localStorage 的问题。`--scroll-ratio` 留待步 11。 |
+| 8 | `6532661` | — | 新增 `utils/appearance.ts` + `composables/useThemeColors.ts`；圆角改由 `data-radius` + CSS 表达，删除 JS 表格与 switch。修复 `Settings.vue` 预览值与实际值不一致的 bug；顺带修复主题 store 未校验 localStorage 的问题。`--scroll-ratio` 留待步 11。 |
+| 9 | `待填` | — | 新增 `composables/useTimePeriod.ts`；时段边界表与问候语映射成为唯一来源，删除 2 条 7 分支 if 链与 `lastDate`。24 小时逐点等价性验证全部一致。 |
 
 > 每步完成后在此表追加一行：步骤号、commit hash、日期、实施中的偏差或发现。
