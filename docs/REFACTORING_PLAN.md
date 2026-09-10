@@ -43,7 +43,7 @@ cd frontend && npx vue-tsc --build
 | 0 | 建立规划文档 | 文档 | 极低 | ✅ 已完成 |
 | 1 | 删除死配置与聚合导出层 | 清理 | 极低 | ✅ 已完成 |
 | 2 | 清理仓库死代码与构建产物 | 清理 | 极低 | ✅ 已完成 |
-| 3 | 统一可选鉴权（修复授权漏洞） | 缺陷+安全 | 低 | ⬜ 待执行 |
+| 3 | 统一可选鉴权（修复授权漏洞） | 缺陷+安全 | 低 | ✅ 已完成 |
 | 4 | 收敛用户/角色/状态映射 | 机制重复 | 中 | ⬜ 待执行 |
 | 5 | 引入领域错误类型，消除字符串匹配判定 | 机制重复 | 中 | ⬜ 待执行 |
 | 6 | 收敛会话启动流程，拆分 isLoading | 时序耦合 | 低-中 | ⬜ 待执行 |
@@ -102,6 +102,9 @@ cd frontend && npx vue-tsc --build
 ### 验证
 - `npx tsc --noEmit` exit 0（会立即暴露任何遗漏引用）。
 - 人工确认：`src/index.ts` 的限流仍为 1000、CORS 仍为 `env.frontendUrl` + `credentials: true`（**行为不变**）。
+
+### 状态
+✅ 已完成
 
 ### 收益
 - 删除约 90 行死代码与 4 个文件。
@@ -185,6 +188,39 @@ cd frontend && npx vue-tsc --build
   4. 被禁用用户用旧 Cookie 访问 → 同上。
   5. `POST /api/comments` 未登录 → 仍为 401。
 - **注意**：`authenticate` 的错误码分支必须逐条保持，否则会改变前端行为。
+
+### 已执行的端到端验证（含漏洞复现对照）
+
+本地启动后端（`NODE_ENV=development`，MySQL 可用），用 `JWT_SECRET` 现场签发三种令牌，
+对 `GET /api/comments?source_id=home&source_type=page&page=1&limit=10&sort=time` 断言。
+测试数据：用户 1（`aorabel`，`status=NORMAL`，**`token_version=3`**），其本人 reaction 为 `LIKE`。
+
+| 断言 | 场景 | 旧代码 `c394a7d` | 新代码 | 结论 |
+|---|---|---|---|---|
+| A | 未登录 | `200 / null` | `200 / null` | 公开读取未受影响 |
+| **B** | **已撤销令牌（令牌 `tv=1` vs DB `tv=3`）** | **`200 / "like"`** | **`200 / null`** | **漏洞已复现并修复** |
+| C | 伪造签名 | `200 / null` | `200 / null` | 两端一致（均拒绝） |
+| D | 合法令牌（`tv=3`） | `200 / "like"` | `200 / "like"` | 正常功能未回退 |
+| E | `POST /api/comments` + 已撤销令牌 | `401 TOKEN_REVOKED` | `401 TOKEN_REVOKED` | 错误码无变化 |
+| F | `POST` + 合法令牌（空内容） | `400 INVALID_PARAMS` | `400 INVALID_PARAMS` | 通过鉴权，校验层正常 |
+| G | `POST` + 无令牌 | `401 UNAUTHORIZED` | `401 UNAUTHORIZED` | 错误码无变化 |
+
+**断言 B 是本步的核心证明**：旧代码用已登出（`token_version` 已递增）的令牌仍能让接口回显
+`user_reaction="like"`，即 `auth.controller.ts:124-125` 的登出撤销机制在评论列表上完全失效；
+新代码返回 `null`，撤销语义恢复。断言 D/E/F/G 证明修复未破坏既有行为与错误码契约。
+
+基线对照的实现方式（可复现）：
+1. 新建工作区外的备份目录，复制改动后的 3 个文件。
+2. `git checkout c394a7d -- backend/middleware/auth.ts backend/controllers/comment.controller.ts backend/src/index.ts`
+3. 启动服务跑同一断言脚本，记录旧行为。
+4. 从备份目录恢复新版本，并逐项核对恢复结果（`authenticateOptional` 已导出、控制器无 `verifyToken` 导入、评论路由带中间件）。
+
+> 验证用的临时脚本放在 `backend/scripts/`（未纳入版本控制），验证后已删除。
+> 之所以不保留为常驻测试：它依赖"用户 1 的 `token_version` 恰为 3"这一本地数据前提，
+> 不是可移植的回归测试；保留会制造"有测试但实际不可运行"的假象。
+
+### 状态
+✅ 已完成（含漏洞复现对照）
 
 ### 收益
 - 认证实现 2 → 1；消除 1 条无 `token_version`/`status` 校验的旁路。
@@ -840,6 +876,7 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 |---|---|---|---|
 | 0 | `726b17e` | — | 建立规划文档（833 行） |
 | 1 | `c394a7d` | — | 删除 4 个聚合/死配置文件。`auth.service.ts` 的 `require()` 动态导入 hack 一并改为静态导入（同一腐烂模式）。类型检查通过。 |
-| 2 | `待填` | — | 删除 `MusicBox.vue`（310 行，自述废弃）。执行中发现审查报告关于 `backend/dist` 被跟踪的判断有误，已在文档中更正 —— 实际 `git ls-files '*.js'` 为 0。 |
+| 2 | `b512921` | — | 删除 `MusicBox.vue`（310 行）。执行中发现审查报告关于 `backend/dist` 被跟踪的判断有误，已在文档中更正 —— 实际 `git ls-files '*.js'` 为 0。 |
+| 3 | `待填` | — | 统一会话解析为 `resolveSession`，新增 `authenticateOptional`。**已用旧/新代码对照复现并修复授权漏洞**：已登出令牌在旧代码下仍回显 `user_reaction="like"`，新代码返回 `null`。验证脚本为一次性，未入库。 |
 
 > 每步完成后在此表追加一行：步骤号、commit hash、日期、实施中的偏差或发现。

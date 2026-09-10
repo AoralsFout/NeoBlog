@@ -1,8 +1,5 @@
 import { Request, Response } from 'express';
 import commentService from '../services/comment.service';
-import { extractTokenFromHeader, verifyToken } from '../utils/jwt';
-import { parseCookies } from '../utils/cookie';
-import { AUTH_COOKIE_NAME } from '../config/auth';
 import logger from '../utils/logger';
 
 /**
@@ -23,16 +20,9 @@ export const getComments = async (req: Request, res: Response) => {
     const limitNum = Math.min(50, Math.max(1, parseInt(limit as string, 10) || 10));
     const sortBy = sort === 'hot' ? 'hot' : 'time';
 
-    // 获取当前用户（可选，支持Authorization头与HttpOnly Cookie）
-    let currentUserId: number | undefined;
-    const token = extractTokenFromHeader(req.headers.authorization)
-      ?? parseCookies(req.headers.cookie)[AUTH_COOKIE_NAME];
-    if (token) {
-      const payload = verifyToken(token);
-      if (payload) {
-        currentUserId = payload.userId;
-      }
-    }
+    // 当前用户由 authenticateOptional 中间件解析（可选登录）
+    // 注意：不要在控制器内手工验签，否则会绕过 token_version 与 status 校验
+    const currentUserId = req.user?.userId;
 
     const result = await commentService.getComments(
       source_id as string,

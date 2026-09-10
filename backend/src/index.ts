@@ -56,7 +56,7 @@ import {
   getSiteStats,
   getTagCloud,
 } from '../controllers/stats.controller';
-import { authenticate, requireAdmin } from '../middleware/auth';
+import { authenticate, authenticateOptional, requireAdmin } from '../middleware/auth';
 import { userUpdateValidationRules } from '../utils/validator';
 
 // 创建Express应用
@@ -125,7 +125,8 @@ app.patch('/api/users/:id', authenticate, userUpdateValidationRules, updateUser)
 app.get('/api/music/getMusicList', getMusicList);
 
 // 评论路由
-app.get('/api/comments', getComments);
+// 列表使用可选认证：未登录可读，登录后附带本人 reaction 状态
+app.get('/api/comments', authenticateOptional, getComments);
 app.post('/api/comments', authenticate, createComment);
 app.post('/api/comments/:id/reaction', authenticate, toggleReaction);
 
