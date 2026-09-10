@@ -1,5 +1,6 @@
 import prisma from '../config/database';
 import logger from '../utils/logger';
+import { NotFoundError, ParentCommentSourceMismatchError } from '../utils/errors';
 import type { Comment, PaginatedComments, Reaction } from '../types/comment';
 
 class CommentService {
@@ -95,10 +96,10 @@ class CommentService {
         });
 
         if (!parent) {
-          throw new Error('父评论不存在');
+          throw new NotFoundError('父评论不存在');
         }
         if (parent.source_id !== sourceId || parent.source_type !== sourceType) {
-          throw new Error('父评论不属于该来源');
+          throw new ParentCommentSourceMismatchError('父评论不属于该来源');
         }
         // 只允许一层嵌套，回复的回复直接挂在顶级评论下
         if (parent.parent_id !== null) {
@@ -144,7 +145,7 @@ class CommentService {
         });
 
         if (!comment) {
-          throw new Error('评论不存在');
+          throw new NotFoundError('评论不存在');
         }
 
         // 检查已有的 reaction

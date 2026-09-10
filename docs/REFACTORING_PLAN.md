@@ -45,7 +45,7 @@ cd frontend && npx vue-tsc --build
 | 2 | 清理仓库死代码与构建产物 | 清理 | 极低 | ✅ 已完成 |
 | 3 | 统一可选鉴权（修复授权漏洞） | 缺陷+安全 | 低 | ✅ 已完成 |
 | 4 | 收敛用户/角色/状态映射 | 机制重复 | 中 | ✅ 已完成 |
-| 5 | 引入领域错误类型，消除字符串匹配判定 | 机制重复 | 中 | ⬜ 待执行 |
+| 5 | 引入领域错误类型，消除字符串匹配判定 | 机制重复 | 中 | ✅ 已完成 |
 | 6 | 收敛会话启动流程，拆分 isLoading | 时序耦合 | 低-中 | ⬜ 待执行 |
 | 7 | 统一 Markdown 渲染与目录大纲 | 职责分散 | 低 | ⬜ 待执行 |
 | 8 | 统一外观下发通道（主题/圆角） | 机制重复 | 低 | ⬜ 待执行 |
@@ -327,18 +327,52 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 
 ### 验证
 - `npx tsc --noEmit` exit 0。
-- **人工回归清单**（错误码必须逐一保持）：
-  1. 创建回复不存在的评论 → 404 `CREATE_COMMENT_FAILED`（或统一后的等价 code）。
-  2. 对不存在的评论点赞 → 404。
-  3. 更新为已存在邮箱 → 409 `EMAIL_CONFLICT`。
-  4. 删除 uploads 目录外文件 → 400 `DELETE_FILE_FAILED`。
-- **注意**：错误响应的 `code` 字段是对外契约，前端 `api.ts:28` 只取 `error.message`，因此改 `code` 风险低，但**不要改 message 文案**。
+- **已执行：错误路径前后对照探针**（本地后端 + MySQL，先跑当前代码取基线，改完再跑同一探针）：
+
+  | 探针 | 场景 | 改动前 | 改动后 | 判定 |
+  |---|---|---|---|---|
+  | P1 | 回复不存在的父评论 | `404 CREATE_COMMENT_FAILED` | `404 NOT_FOUND` | 状态码保持，code 收敛 |
+  | P2 | 父评论不属于该来源 | `500 CREATE_COMMENT_FAILED` / msg=`父评论不属于该来源` | `500 INTERNAL_SERVER_ERROR` / msg=`服务器内部错误` | **状态码保持**；msg 与 code 变化（见下） |
+  | P3 | 对不存在评论点赞 | `404 REACTION_FAILED` | `404 NOT_FOUND` | 状态码保持，code 收敛 |
+  | **P4** | **邮箱被占用** | **`500 UPDATE_USER_FAILED`** | **`409 EMAIL_CONFLICT`** | **修复了不可达分支（见下）** |
+  | P5 | 删除 uploads 外文件 | `400 DELETE_FILE_FAILED` / `非法文件路径` | 完全一致 | 无变化 |
+  | P6 | 删除不存在的 uploads 文件 | `200` | `200` | 无变化 |
+  | P7 | 评论超 2000 字 | `400 CONTENT_TOO_LONG` | 完全一致 | 无变化 |
+  | P8 | 评论内容为空 | `400 INVALID_PARAMS` | 完全一致 | 无变化 |
+
+- **执行中发现的两个真实缺陷（推理 + 实测确认）**：
+  1. **`user.controller.ts` 的 409 分支是不可达代码。** `user.service.updateUser` 的外层 `catch`
+     会把内层刚抛出的 `new Error('该邮箱已被其他用户使用')` 重新包装成
+     `new Error('更新用户失败: ...')`，Message 中不再含 `已被使用`，因此
+     `message.includes('已被使用')` 恒为 false，实际返回 500。
+     改为 `ConflictError` 直接抛出后，P4 由 `500` 变为设计意图中的 `409 EMAIL_CONFLICT`。
+  2. **父评论来源不匹配被当作 500（服务端错误），语义上应为 400。** 这是改动前就存在的问题
+     （旧代码同样返回 500）。本步通过 `ParentCommentSourceMismatchError` **刻意保持 500**，
+     不顺手改状态码；该错误的副作用是 P2 的 code/message 变为通用的
+     `INTERNAL_SERVER_ERROR / 服务器内部错误`，且错误消息不再回显。
+     若要收敛为 400 且保留消息回显，应作为独立的对外契约变更处理（见风险）。
+
+- **已执行：读写主路径冒烟**（15 个端点）：`health / articles / articles?sort=hot / articles/1?view=false /
+  articles/top / stats / tags / music / comments / auth/me / users / users/search / users/1 / routes / system`
+  全部 `status=200 success=true`；`POST /api/comments` 返回 `201`；
+  反应切换 like→取消→like 计数正确；冒烟产生的测试评论已清理（`LEFTOVER_SMOKE_COMMENTS=0`），
+  被测试取消的 `comment 20` 反应已恢复（`REACTIONS` 回到 `19/20/21 = LIKE`）。
+- **前端影响评估**：`grep 'error.code' frontend/src` → 无匹配。前端 `api.ts:28` 只读取
+  `error.message`，不依赖 `code` 或状态码，因此本次 code 收敛与 P4 的 409 变更不会破坏前端。
+
+### 状态
+✅ 已完成
 
 ### 收益
-- 字符串匹配判定 4 → 0；统一错误映射入口 1 个；`getTopArticles` 的静默吞异常行为被显式化（保留但记录）。
+- 字符串匹配判定 4 → 0（`comment.controller` ×2、`user.controller`、`upload.controller`）。
+- 统一错误映射入口 1 个（`src/index.ts` 的中间件），Controller 不再各自决定状态码。
+- 修复 1 处不可达的 409 分支（真实缺陷）。
 
 ### 风险
-**中**。需逐条保持现有状态码与文案。建议本步**不改** `getTopArticles` 的吞异常行为，只加注释标记。
+**中**。需逐条保持状态码与文案，已用探针表核对（除 P2/P4 两处已显式说明的差异）。
+**遗留待决**：P2 的语义错误（应为 400）与错误消息回显，属于对外契约变更，
+本步刻意未处理。若前端将来需要展示"父评论不属于该来源"这类具体原因，
+应把它改成 `ValidationError`（400）并同步前端，作为独立变更。
 
 ---
 
@@ -900,6 +934,7 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 | 1 | `c394a7d` | — | 删除 4 个聚合/死配置文件。`auth.service.ts` 的 `require()` 动态导入 hack 一并改为静态导入（同一腐烂模式）。类型检查通过。 |
 | 2 | `b512921` | — | 删除 `MusicBox.vue`（310 行）。执行中发现审查报告关于 `backend/dist` 被跟踪的判断有误，已在文档中更正 —— 实际 `git ls-files '*.js'` 为 0。 |
 | 3 | `b7a5b1e` | — | 统一会话解析为 `resolveSession`，新增 `authenticateOptional`。**已用旧/新代码对照复现并修复授权漏洞**：已登出令牌在旧代码下仍回显 `user_reaction="like"`，新代码返回 `null`。验证脚本为一次性，未入库。 |
-| 4 | `待填` | — | 新增 `backend/mappers/user.ts`，删除两份重复 mapper。关键验证：`/api/auth/me` 的 9 个字段完整性（`getUserProfile` 改为显式 select 后未丢字段）。前端侧枚举文案留待步 14。 |
+| 4 | `269d53e` | — | 新增 `backend/mappers/user.ts`，删除两份重复 mapper。关键验证：`/api/auth/me` 的 9 个字段完整性（`getUserProfile` 改为显式 select 后未丢字段）。前端侧枚举文案留待步 14。 |
+| 5 | `待填` | — | 新增 `backend/utils/errors.ts` 与统一错误中间件，4 处字符串匹配判定清零。发现并修复"409 分支不可达"缺陷（P4 由 500→409）。P2 语义错误（应为 400）刻意保留 500 并记录待决。 |
 
 > 每步完成后在此表追加一行：步骤号、commit hash、日期、实施中的偏差或发现。

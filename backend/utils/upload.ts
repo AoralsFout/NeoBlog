@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { env } from '../config/env';
 import logger from './logger';
+import { ValidationError } from './errors';
 
 // 确保上传目录存在
 const publicDir = path.join(__dirname, '..', 'public');
@@ -210,7 +211,7 @@ export const deleteFile = (filepath: string): Promise<void> => {
     // 路径包含校验：必须位于 uploads 目录内
     if (resolvedPath !== uploadDirResolved && !resolvedPath.startsWith(uploadDirResolved + path.sep)) {
       logger.warn(`拒绝删除uploads目录外的文件: ${filepath}`);
-      reject(new Error('非法文件路径'));
+      reject(new ValidationError('非法文件路径', 'DELETE_FILE_FAILED'));
       return;
     }
 

@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { uploadSingle, getFileUrl, getRelativePath, deleteFile, verifyImageSignature } from '../utils/upload';
 import userService from '../services/user.service';
 import logger from '../utils/logger';
@@ -169,7 +169,7 @@ export const uploadAvatar = (req: Request, res: Response) => {
  * 删除文件（需通过authenticate + requireAdmin中间件）
  * 仅允许删除 uploads 目录内的文件
  */
-export const deleteUploadedFile = async (req: Request, res: Response) => {
+export const deleteUploadedFile = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { filepath } = req.body;
     if (!filepath) {
@@ -194,14 +194,8 @@ export const deleteUploadedFile = async (req: Request, res: Response) => {
       message: '文件删除成功',
     });
   } catch (error) {
+    // 非法路径由 utils/upload 抛出 ValidationError(400)
     logger.error('删除文件失败:', error);
-    const status = error instanceof Error && error.message.includes('非法文件路径') ? 400 : 500;
-    res.status(status).json({
-      success: false,
-      error: {
-        code: 'DELETE_FILE_FAILED',
-        message: error instanceof Error ? error.message : '删除文件失败',
-      },
-    });
+    next(error);
   }
 };

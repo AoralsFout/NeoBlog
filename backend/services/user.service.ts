@@ -2,6 +2,7 @@ import { User } from '../types/user';
 import prisma from '../config/database';
 import logger from '../utils/logger';
 import { toApiUser, toDbRole, toDbStatus } from '../mappers/user';
+import { ConflictError } from '../utils/errors';
 
 // 用户服务类
 class UserService {
@@ -104,8 +105,11 @@ class UserService {
     } catch (error: any) {
       logger.error('更新用户失败:', error);
       // 邮箱唯一约束冲突
+      // 注意：此处必须直接 throw 领域错误，不能先抛再在外层 catch 里包装——
+      // 历史实现把 P2002 转成普通 Error 后又被外层 catch 重新包装成
+      // `更新用户失败: ...`，导致 controller 的 409 分支永远不可达（实际返回 500）。
       if (error?.code === 'P2002') {
-        throw new Error('该邮箱已被其他用户使用');
+        throw new ConflictError('该邮箱已被其他用户使用', 'EMAIL_CONFLICT');
       }
       throw new Error(`更新用户失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }

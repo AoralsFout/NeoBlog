@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { env } from '../config/env';
 import { checkDatabaseConnection } from '../config/database';
+import { isAppError } from '../utils/errors';
 import logger from '../utils/logger';
 
 // 导入控制器
@@ -180,6 +181,15 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     return res.status(400).json({
       success: false,
       error: { code: 'INVALID_JSON', message: '请求体不是有效的JSON' },
+    });
+  }
+
+  // 领域错误：由错误类型决定状态码与错误码，不再依赖消息文案匹配
+  if (isAppError(err)) {
+    logger.warn(`${req.method} ${req.path} → ${err.status} ${err.code}: ${err.message}`);
+    return res.status(err.status).json({
+      success: false,
+      error: { code: err.code, message: err.message },
     });
   }
 

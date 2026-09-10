@@ -4,6 +4,7 @@ import oauthService from './oauth.service';
 import { generateToken, verifyToken, JwtPayload } from '../utils/jwt';
 import logger from '../utils/logger';
 import { toApiUser } from '../mappers/user';
+import { NotFoundError } from '../utils/errors';
 import { NatayarkUser } from './oauth.service';
 
 // 认证服务类
@@ -171,7 +172,7 @@ class AuthService {
     });
 
     if (!user) {
-      throw new Error('用户不存在');
+      throw new NotFoundError('用户不存在', 'USER_NOT_FOUND');
     }
 
     // 这里可以添加从Natayark获取最新信息的逻辑

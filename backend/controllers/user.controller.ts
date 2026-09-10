@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import userService from '../services/user.service';
 import { validateRequest, validateIdParam, validatePagination } from '../utils/validator';
 import { isApiRole, isApiStatus } from '../mappers/user';
@@ -98,7 +98,7 @@ export const getUserById = async (req: Request, res: Response) => {
 /**
  * 更新用户信息（需通过authenticate中间件 + userUpdateValidationRules）
  */
-export const updateUser = async (req: Request, res: Response) => {
+export const updateUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
     // 验证用户ID参数
     const userId = validateIdParam(req.params.id as string);
@@ -174,21 +174,9 @@ export const updateUser = async (req: Request, res: Response) => {
       data: user,
     });
   } catch (error) {
+    // 邮箱唯一约束冲突由 user.service 抛出 ConflictError(409)，此处只做日志与转发
     logger.error('更新用户信息失败:', error);
-    // 邮箱唯一约束冲突
-    if (error instanceof Error && error.message.includes('已被使用')) {
-      return res.status(409).json({
-        success: false,
-        error: { code: 'EMAIL_CONFLICT', message: error.message },
-      });
-    }
-    res.status(500).json({
-      success: false,
-      error: {
-        code: 'UPDATE_USER_FAILED',
-        message: error instanceof Error ? error.message : '更新用户信息失败',
-      },
-    });
+    next(error);
   }
 };
 

@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import commentService from '../services/comment.service';
 import logger from '../utils/logger';
 
@@ -49,7 +49,7 @@ export const getComments = async (req: Request, res: Response) => {
 /**
  * 创建评论（需通过authenticate中间件）
  */
-export const createComment = async (req: Request, res: Response) => {
+export const createComment = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { content, source_id, source_type, parent_id } = req.body;
 
@@ -84,22 +84,16 @@ export const createComment = async (req: Request, res: Response) => {
 
     res.status(201).json({ success: true, data: comment });
   } catch (error) {
+    // 业务失败原因由 Service 抛出的领域错误类型承载，此处不做文案匹配
     logger.error('创建评论失败:', error);
-    const status = error instanceof Error && error.message.includes('不存在') ? 404 : 500;
-    res.status(status).json({
-      success: false,
-      error: {
-        code: 'CREATE_COMMENT_FAILED',
-        message: error instanceof Error ? error.message : '创建评论失败',
-      },
-    });
+    next(error);
   }
 };
 
 /**
  * 切换点赞/点踩（需通过authenticate中间件）
  */
-export const toggleReaction = async (req: Request, res: Response) => {
+export const toggleReaction = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const commentId = parseInt(String(req.params.id), 10);
     if (isNaN(commentId)) {
@@ -122,13 +116,6 @@ export const toggleReaction = async (req: Request, res: Response) => {
     res.json({ success: true, data: result });
   } catch (error) {
     logger.error('操作评论反应失败:', error);
-    const status = error instanceof Error && error.message.includes('不存在') ? 404 : 500;
-    res.status(status).json({
-      success: false,
-      error: {
-        code: 'REACTION_FAILED',
-        message: error instanceof Error ? error.message : '操作评论反应失败',
-      },
-    });
+    next(error);
   }
 };
