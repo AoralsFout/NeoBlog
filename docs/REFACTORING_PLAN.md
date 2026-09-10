@@ -1098,6 +1098,6 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 | 8 | `6532661` | — | 新增 `utils/appearance.ts` + `composables/useThemeColors.ts`；圆角改由 `data-radius` + CSS 表达，删除 JS 表格与 switch。修复 `Settings.vue` 预览值与实际值不一致的 bug；顺带修复主题 store 未校验 localStorage 的问题。`--scroll-ratio` 留待步 11。 |
 | 9 | `869c386` | — | 新增 `composables/useTimePeriod.ts`；时段边界表与问候语映射成为唯一来源，删除 2 条 7 分支 if 链与 `lastDate`。24 小时逐点等价性验证全部一致。 |
 | 10 | `d3486bc` | — | 删除 `@ts-ignore`、`$queryRaw` 回退与字符串错误匹配，改用显式 `select` 的 Prisma 查询。实测 19 条数据逐字段对等（`TOTAL_DIFFS=0`）。确认仓库无 `prisma/migrations`，schema 由外部维护。 |
-| 11 | `待填` | — | 布局改由 `data-layout` + CSS grid areas 拥有；删除 5 个 JS 状态与 resize 监听；`RightSidebar` 由 2 个挂载点收敛为 1 个（消除布局切换时的重复请求与计时器重建）。两栏时右栏位置的 9 组合目视核对待补验（残余风险最高项）。 |
+| 11 | `efbede1` | — | 布局改由 `data-layout` + CSS grid areas 拥有；删除 5 个 JS 状态与 resize 监听；`RightSidebar` 由 2 个挂载点收敛为 1 个（消除布局切换时的重复请求与计时器重建）。两栏时右栏位置的 9 组合目视核对待补验（残余风险最高项）。 |
 
 > 每步完成后在此表追加一行：步骤号、commit hash、日期、实施中的偏差或发现。
