@@ -145,6 +145,7 @@ import Card from '@/components/Card.vue';
 import { onMounted, ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { statsApi } from '@/utils/api';
+import { formatNumber as formatNumberShared } from '@/utils/format';
 
 // ===== 站点统计与标签云 =====
 interface SiteStats {
@@ -175,7 +176,7 @@ const blogDays = computed(() => {
     return Math.floor((now - first) / 86400000) + 1;
 });
 
-const formatNumber = (n: number) => n.toLocaleString('zh-CN');
+const formatNumber = formatNumberShared;
 
 // 标签字号按出现次数缩放
 const tagFontSize = (count: number) => {

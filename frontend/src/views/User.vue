@@ -51,7 +51,7 @@
                 <div class="stat-item">
                   <span class="stat-label">角色</span>
                   <span class="stat-value badge" :class="userStore.currentUser?.role">
-                    {{ userStore.currentUser?.role === 'admin' ? '管理员' : '普通用户' }}
+                    {{ roleLabel(userStore.currentUser?.role) }}
                   </span>
                 </div>
                 <div class="stat-item">
@@ -167,6 +167,8 @@
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useUserStore } from '@/stores/user';
 import { useRouter } from 'vue-router';
+import { formatDateLong } from '@/utils/format';
+import { statusLabel, roleLabel } from '@/utils/appearance';
 import type { User } from '@/types/user';
 import Button from '@/components/Button.vue';
 
@@ -288,29 +290,11 @@ const handleLogout = async () => {
   router.push('/');
 };
 
-// 格式化日期
-const formatDate = (dateString?: string) => {
-  if (!dateString) return '未知';
-  return new Date(dateString).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-};
+// 格式化日期（长格式，空值显示"未知"）
+const formatDate = (dateString?: string) => formatDateLong(dateString);
 
-// 获取状态文本
-const getStatusText = (status?: string) => {
-  switch (status) {
-    case 'normal':
-      return '正常';
-    case 'banned':
-      return '已封禁';
-    case 'frozen':
-      return '已冻结';
-    default:
-      return '未知';
-  }
-};
+// 获取状态文本（值域与后端 Status 定义对应，映射表集中在 utils/appearance）
+const getStatusText = (status?: string) => statusLabel(status);
 </script>
 
 <style scoped>

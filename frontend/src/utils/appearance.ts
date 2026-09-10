@@ -51,3 +51,36 @@ export const THEME_OPTIONS: readonly ThemeOption[] = [
 
 export const isThemeName = (value: unknown): value is ThemeName =>
   typeof value === 'string' && THEME_OPTIONS.some((option) => option.value === value);
+
+/**
+ * 用户状态的中文展示名。
+ *
+ * 值域与后端 types/user.ts 的 Status 及 Prisma 的 Status 枚举一致（小写形式）。
+ * 历史上这段 switch 硬编码在 User.vue 中，与后端值域定义各自维护。
+ */
+export type UserStatusName = 'normal' | 'banned' | 'frozen';
+
+export const STATUS_LABELS: Record<UserStatusName, string> = {
+  normal: '正常',
+  banned: '已封禁',
+  frozen: '已冻结',
+};
+
+/** 未知状态统一显示"未知"（保持 User.vue 原行为） */
+export const statusLabel = (status?: string | null): string => {
+  if (!status) return '未知';
+  return STATUS_LABELS[status as UserStatusName] ?? '未知';
+};
+
+/** 用户角色的中文展示名 */
+export type UserRoleName = 'admin' | 'member';
+
+export const ROLE_LABELS: Record<UserRoleName, string> = {
+  admin: '管理员',
+  member: '普通用户',
+};
+
+export const roleLabel = (role?: string | null): string => {
+  if (!role) return '未知';
+  return ROLE_LABELS[role as UserRoleName] ?? '未知';
+};

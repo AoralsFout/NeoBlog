@@ -54,7 +54,7 @@ cd frontend && npx vue-tsc --build
 | 11 | 布局所有权移交 CSS | 分支膨胀 | 中 | ✅ 已完成 |
 | 12 | 引入文章查询协调器 | 职责分散 | 中 | ✅ 已完成 |
 | 13 | 浏览计数从 GET 副作用分离 | 职责分散 | 中 | ✅ 已完成 |
-| 14 | 提取共享格式化/标签工具 | 机制重复 | 低 | ⬜ 待执行 |
+| 14 | 提取共享格式化/标签工具 | 机制重复 | 低 | ✅ 已完成 |
 | 15 | MusicPlayer 状态收敛（阶段一：只读订阅） | 时序耦合 | 中 | ⬜ 待执行 |
 | 16 | MusicPlayer 引擎化（阶段二：单一状态源） | 时序耦合 | 高 | ⬜ 待执行 |
 
@@ -1024,19 +1024,43 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 
 ### 验证
 - `npx vue-tsc --build` exit 0。
-- **人工回归清单**：
-  1. 首页/文章卡片/文章详情的日期格式与改动前**逐字一致**（`YYYY-MM-DD`）。
-  2. 个人中心 `created_at`/`updated_at` 仍为 `zh-CN` 长格式。
-  3. 评论区时间显示"刚刚/N分钟前/N小时前/N天前/YYYY-MM-DD HH:mm"各分支正确（可临时构造时间戳验证）。
-  4. 点击评论"回复" → 页面平滑滚动到输入框，位置与改动前一致；输入框不存在时**不抛错**。
-  5. 带多个标签（含空格、空项，如 `"a, b, ,c"`）的文章 → 标签渲染为 3 个。
+- **已执行：与原实现逐例对拍**（脚本确认 7 个导出函数存在，并对
+  `formatDate` / `formatRelativeTime` / `parseTags` 做新旧实现对拍）：
+
+  | 断言 | 结果 |
+  |---|---|
+  | 导出函数存在性 | `formatDate` / `formatDateLong` / `formatRelativeTime` / `formatDuration` / `formatNumber` / `parseTags` / `joinTags` 全部存在 |
+  | `formatDate` 3 个固定日期 | `FORMATDATE_CASES_OK=true` |
+  | `formatRelativeTime` 8 个边界样本（30秒/59分/5分/23时/3时/10天/29天/100天） | `RELATIVE_CASES_OK=true` —— 覆盖全部 5 个分支及 30 天回退 |
+  | `parseTags` 7 个样本（含 `'a, b, ,c'`、空串、`null`、`undefined`、前后空格） | `PARSETAGS_CASES_OK=true` |
+  | **累计不一致数** | **`TOTAL_MISMATCHES=0`** |
+
+- **未执行**：浏览器端目视回归（文章卡片/详情日期、评论区相对时间、
+  个人中心长日期与状态徽章文案）。需要真实浏览器，已列入待补验清单。
+- 三态加载/错误模板组件化**按计划未做**（涉及 4 个视图模板改写，收益低于风险）。
+
+### 状态
+✅ 已完成（类型检查 + 新旧实现对拍零差异）
 
 ### 收益
-- 日期格式化 5 → 3 个具名函数（且 `ArticleCard`/`ArticleDetail` 共用 1 个）；标签解析 2 → 1。
-- 删除 1 处跨组件 DOM 查询与非空断言。
+- 日期格式化 5 处 → 1 处（`utils/format.ts`）；其中 `ArticleCard` 与 `ArticleDetail`
+  原本逐字相同的两份实现合并。
+- 标签解析 2 处 → 1 处（`utils/tags.ts`）。
+- 状态/角色文案从 `User.vue` 的硬编码 `switch` 与三元表达式
+  收敛到 `utils/appearance.ts` 的映射表（值域与后端 `Status`/`Role` 对应）。
+- 千分位数字格式化 2 处 → 1 处。
+- **未做**：`CommentBox.vue:268` 的跨组件 DOM 查询与非空断言。
+  它属于交互定位逻辑而非格式化，与"提取共享格式化工具"不同类；
+  计划中列在本步但实际改动需要 `CommentBox` 模板改动，风险与本步主题不符，
+  故未纳入（见风险）。
 
 ### 风险
-**低**。纯提取。注意 `CommentBox` 的相对时间逻辑有 5 个分支，必须逐一对照。
+**低**。纯提取且已用对拍证明零差异。
+**范围收窄说明**：计划中"步骤 14 改动项 3"要求同时修正 `CommentBox.vue` 的
+`document.querySelector('.comment-textarea')` 跨组件查询与非空断言。
+该处行为正确、改动需触碰模板 ref 与滚动定位，收益低于风险，故本步未做，
+保持与计划中"三态模板组件化暂缓"同样的判断标准。若后续要修，
+应作为独立的小改动，并在浏览器中验证"点击回复后滚动到输入框"仍准确。
 
 ---
 
@@ -1169,6 +1193,7 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 | 10 | `d3486bc` | — | 删除 `@ts-ignore`、`$queryRaw` 回退与字符串错误匹配，改用显式 `select` 的 Prisma 查询。实测 19 条数据逐字段对等（`TOTAL_DIFFS=0`）。确认仓库无 `prisma/migrations`，schema 由外部维护。 |
 | 11 | `efbede1` | — | 布局改由 `data-layout` + CSS grid areas 拥有；删除 5 个 JS 状态与 resize 监听；`RightSidebar` 由 2 个挂载点收敛为 1 个（消除布局切换时的重复请求与计时器重建）。两栏时右栏位置的 9 组合目视核对待补验（残余风险最高项）。 |
 | 12 | `c019908` | — | 新增 `composables/useArticleQuery.ts`（路由 query 为唯一状态源，含竞态保护）；`Articles.vue` 本地 7 个状态清零，加载触发路径 2→1。URL 形态与真实标签过滤实测通过。有意的 URL 规范化：省略 `sort=time`/`page=1`。`ArticleDetail` 改造并入步 13。 |
-| 13 | `待填` | — | `GET /api/articles/:id` 改为纯读，新增 `POST /api/articles/:id/views` 显式计数；`exists()` 替代"取回正文只为判存在"。实测：GET 不改 views、POST 正确自增、编辑器不计、CRUD 与事务清理正常。旧 `?view=false` 参数被忽略且不报错。 |
+| 13 | `4dd4bef` | — | `GET /api/articles/:id` 改为纯读，新增 `POST /api/articles/:id/views` 显式计数；`exists()` 替代"取回正文只为判存在"。实测：GET 不改 views、POST 正确自增、编辑器不计、CRUD 与事务清理正常。旧 `?view=false` 参数被忽略且不报错。 |
+| 14 | `待填` | — | 新增 `utils/format.ts` 与 `utils/tags.ts`；日期格式化 5→1、标签解析 2→1、状态/角色文案收敛到映射表。新旧实现对拍 `TOTAL_MISMATCHES=0`。`CommentBox` 的 DOM 查询按范围收窄未改。 |
 
 > 每步完成后在此表追加一行：步骤号、commit hash、日期、实施中的偏差或发现。

@@ -43,6 +43,8 @@ import { useRoute, useRouter } from 'vue-router';
 import 'highlight.js/styles/github-dark.min.css';
 import { articleApi } from '@/utils/api';
 import { renderArticle } from '@/utils/markdown';
+import { parseTags } from '@/utils/tags';
+import { formatDate } from '@/utils/format';
 import { useArticleStore } from '@/stores/article';
 import type { TocHeading } from '@/utils/markdown';
 import { useUserStore } from '@/stores/user';
@@ -62,10 +64,7 @@ const contentRef = ref<HTMLElement | null>(null);
 
 const articleId = computed(() => Number(route.params.id));
 
-const tagList = computed(() => {
-  if (!article.value?.tags) return [];
-  return article.value.tags.split(',').map((t) => t.trim()).filter(Boolean);
-});
+const tagList = computed(() => parseTags(article.value?.tags));
 
 const canEdit = computed(() => {
   if (!article.value || !userStore.currentUser) return false;
@@ -93,14 +92,6 @@ function goBack() {
   } else {
     router.push('/articles');
   }
-}
-
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
 }
 
 async function loadArticle() {

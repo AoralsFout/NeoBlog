@@ -30,6 +30,8 @@
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import Card from './Card.vue';
+import { parseTags } from '@/utils/tags';
+import { formatDate } from '@/utils/format';
 import type { Article } from '@/types/article';
 
 const props = defineProps<{
@@ -38,21 +40,10 @@ const props = defineProps<{
 
 const router = useRouter();
 
-const tagList = computed(() => {
-  if (!props.article.tags) return [];
-  return props.article.tags.split(',').map((t) => t.trim()).filter(Boolean);
-});
+const tagList = computed(() => parseTags(props.article.tags));
 
 function goDetail() {
   router.push(`/article/${props.article.id}`);
-}
-
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
 }
 </script>
 
