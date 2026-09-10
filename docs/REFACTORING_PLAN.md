@@ -1244,6 +1244,40 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 | `ArticleEditor.vue:90-113` 的 `submitIntent` 标志 | 有效但丑陋；行为正确，改动收益低。若步骤 5 触及该文件的错误处理则一并评估 |
 | 三态加载/错误模板组件化（步骤 14 第 4 项） | 涉及 4 个视图模板改写，收益低于风险 |
 | `backend/dist` 的目录结构导致 `__dirname/../public` 路径耦合 | 涉及构建/部署配置，需单独验证生产部署 |
+| markdown chunk 体积（982.08 kB / gzip 327.51 kB） | 见下节「关于 markdown chunk 体积的评估结论」 |
+
+---
+
+## 关于 markdown chunk 体积的评估结论（步骤 14 副产物）
+
+用户执行 `npx vite build` 通过，仅有一项警告：`dist/assets/markdown-aehZeyL5.js`
+982.08 kB（gzip 327.51 kB）。评估后**决定暂不优化**，理由如下：
+
+1. **该 chunk 不在关键路径上。** 全仓引用 `@/utils/markdown` 的只有两处运行时代码：
+   `views/ArticleDetail.vue`（文章详情）与 `views/ArticleEditor.vue`（编辑器）。
+   二者都是路由级懒加载组件（`router/index.ts` 用 `() => import(...)`），
+   因此首页、文章列表、设置页**都不会加载**这个 chunk。
+   受影响范围精确限定为"打开文章详情/编辑器"，且是首次进入时一次性的。
+
+2. **体积主要来自语法高亮，而它是产品功能。** `utils/markdown.ts` 里
+   `import hljs from 'highlight.js'` 会注册全部约 190 种语言定义。
+   若要瘦身，可选方案是按需注册（`highlight.js/lib/core` + 动态 import 语言包），
+   但这会把"渲染是同步的"改为"语言包异步加载"，涉及：
+   - 渲染函数的同步性（当前 `renderArticle` 是同步纯函数，改异步会波及
+     `ArticleDetail` 的 computed 与 `stores/article` 的目录同步时机）；
+   - 语言包加载失败时的降级路径；
+   - 生产 CSP（`vite.config.ts` 注入 `script-src 'self'`）下动态 chunk 的加载。
+   即：收益（减少一个非关键路径 chunk）与风险（改动渲染同源性）不匹配。
+
+3. **未能实测验证。** 本会话的沙箱禁止 `vite build`（`spawn EPERM`：vite 加载
+   `vite.config.ts` 时需以管道捕获 `git` 子进程输出，用于页脚构建信息）。
+   因此我**无法测量**任何优化方案的实际收益。在无法测量的情况下声称
+   "能降到 X kB" 是不负责任的。
+
+**若将来要处理**，建议顺序：先在本机 `npx vite build` 保存基线产物，
+再实施按需注册并对比 `dist/assets/markdown-*.js` 的前后体积；
+若决定不做，可在 `vite.config.ts` 的 `build.chunkSizeWarningLimit` 中显式放宽阈值
+并注明原因（当前是默认 500 kB 触发了这个警告，它只是启发式提示，不代表功能问题）。
 
 ---
 
