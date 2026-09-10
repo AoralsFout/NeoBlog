@@ -44,7 +44,7 @@ cd frontend && npx vue-tsc --build
 | 1 | 删除死配置与聚合导出层 | 清理 | 极低 | ✅ 已完成 |
 | 2 | 清理仓库死代码与构建产物 | 清理 | 极低 | ✅ 已完成 |
 | 3 | 统一可选鉴权（修复授权漏洞） | 缺陷+安全 | 低 | ✅ 已完成 |
-| 4 | 收敛用户/角色/状态映射 | 机制重复 | 中 | ⬜ 待执行 |
+| 4 | 收敛用户/角色/状态映射 | 机制重复 | 中 | ✅ 已完成 |
 | 5 | 引入领域错误类型，消除字符串匹配判定 | 机制重复 | 中 | ⬜ 待执行 |
 | 6 | 收敛会话启动流程，拆分 isLoading | 时序耦合 | 低-中 | ⬜ 待执行 |
 | 7 | 统一 Markdown 渲染与目录大纲 | 职责分散 | 低 | ⬜ 待执行 |
@@ -262,19 +262,41 @@ cd frontend && npx vue-tsc --build
 
 ### 验证
 - `npx tsc --noEmit` exit 0。
-- **人工回归清单**：
-  1. 登录 → `/api/auth/me` 返回的 `role`/`status` 仍为小写。
-  2. 管理员 `PATCH /api/users/:id` 传 `role: "admin"` 与 `role: "ADMIN"` → 都成功且返回小写。
-  3. 管理员传非法 role/status → 仍返回 400 且错误码为 `VALIDATION_ERROR`。
-  4. 普通用户尝试改 role → 仍被忽略（不报错、不生效）。
-- **约束**：本步**只做归一化收敛，不改变对外表示形式**（前端看到的仍是小写）。若发现某接口当前返回大写，先记录、不修改。
+- **已执行的端到端验证**（本地后端 + MySQL，管理员令牌 `tv=3`）：
+
+  | 断言 | 场景 | 结果 | 结论 |
+  |---|---|---|---|
+  | ME keys | `GET /api/auth/me` 字段完整性 | `avatar,created_at,email,id,natayark_id,role,status,updated_at,username` | **9 个字段全在**，映射重写未丢字段 |
+  | ME role/status | 读路径大小写 | `admin` / `normal` | 仍为小写（对外契约不变） |
+  | ME created_at | 日期序列化 | `2026-04-16T15:37:37.701Z` | ISO 字符串正常 |
+  | BAD_ROLE | `PATCH {role:"superuser"}` | `400 VALIDATION_ERROR` | 值域校验仍生效 |
+  | BAD_STATUS | `PATCH {status:"zombie"}` | `400 VALIDATION_ERROR` | 值域校验仍生效 |
+  | UPPER_ROLE | `PATCH {role:"ADMIN"}` | `200 role=admin` | 大写输入被接受并归一化 |
+  | UPPER_STATUS | `PATCH {status:"NORMAL"}` | `200 status=normal` | 同上 |
+  | MIXED_STATUS | `PATCH {status:"Normal"}` | `200 status=normal` | 混合大小写同样归一化 |
+  | ME2 | 写后复查 | `role=admin status=normal` | 数据未被改坏 |
+  | LIST | `GET /api/users` | `200 firstRole=admin firstStatus=normal` | 列表路径共用同一 mapper |
+
+  **最关键的一条是 `ME keys`**：`toApiUser` 内部新增了 `select` 行字段以支持宽松类型，
+  原本存在"漏选字段导致响应静默变瘦"的风险。断言确认 9 个字段与改动前完全一致。
+
+  实施中的偏差：`getUserProfile` 原实现为 `findUnique` **不带 select**，改为 mapper 后需要显式列出字段。
+  这是本步唯一的真实风险点，已由 `ME keys` 断言覆盖验证。
+
+### 状态
+✅ 已完成
 
 ### 收益
-- 重复 mapper 2 → 1；大小写转换点 6 → 2（成对）；枚举字面量硬编码点 3 → 1。
-- 消除"三轮转换"中任一轮遗漏导致的静默错值。
+- 重复 mapper 2 → 1（`mappers/user.ts` 唯一实现）。
+- 大小写转换点 6 → 2（`toDbRole`/`toDbStatus` 成对定义）。
+- 枚举字面量硬编码 3 → 1（改由类型 `satisfies` 派生 `API_ROLES`/`API_STATUSES`）。
+- 消除 `updateUser` 的"三轮转换"（controller 转小写 → service 转大写 → 响应转小写）。
+- 附带收益：`getUserProfile` 原本把 `token_version` 等内部字段作为原始行透传，现只返回 API 契约内的 9 个字段。
 
 ### 风险
-**中**。`updateUser` 是权限敏感路径。必须严格遵守"不改对外契约"。
+**中**。`updateUser` 是权限敏感路径，且 `getUserProfile` 的字段集变化会影响前端。
+已严格验证"不改对外契约"。**未做**：前端 `User.vue:302-313` 的 `getStatusText` switch
+（留下一步 14 统一前端侧），标签解析重复（同样留待步 14），以避免本步扩散范围。
 
 ---
 
@@ -877,6 +899,7 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 | 0 | `726b17e` | — | 建立规划文档（833 行） |
 | 1 | `c394a7d` | — | 删除 4 个聚合/死配置文件。`auth.service.ts` 的 `require()` 动态导入 hack 一并改为静态导入（同一腐烂模式）。类型检查通过。 |
 | 2 | `b512921` | — | 删除 `MusicBox.vue`（310 行）。执行中发现审查报告关于 `backend/dist` 被跟踪的判断有误，已在文档中更正 —— 实际 `git ls-files '*.js'` 为 0。 |
-| 3 | `待填` | — | 统一会话解析为 `resolveSession`，新增 `authenticateOptional`。**已用旧/新代码对照复现并修复授权漏洞**：已登出令牌在旧代码下仍回显 `user_reaction="like"`，新代码返回 `null`。验证脚本为一次性，未入库。 |
+| 3 | `b7a5b1e` | — | 统一会话解析为 `resolveSession`，新增 `authenticateOptional`。**已用旧/新代码对照复现并修复授权漏洞**：已登出令牌在旧代码下仍回显 `user_reaction="like"`，新代码返回 `null`。验证脚本为一次性，未入库。 |
+| 4 | `待填` | — | 新增 `backend/mappers/user.ts`，删除两份重复 mapper。关键验证：`/api/auth/me` 的 9 个字段完整性（`getUserProfile` 改为显式 select 后未丢字段）。前端侧枚举文案留待步 14。 |
 
 > 每步完成后在此表追加一行：步骤号、commit hash、日期、实施中的偏差或发现。

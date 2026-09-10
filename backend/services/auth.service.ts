@@ -1,8 +1,9 @@
-import { User, Role, Status } from '../types/user';
+import { User } from '../types/user';
 import prisma from '../config/database';
 import oauthService from './oauth.service';
 import { generateToken, verifyToken, JwtPayload } from '../utils/jwt';
 import logger from '../utils/logger';
+import { toApiUser } from '../mappers/user';
 import { NatayarkUser } from './oauth.service';
 
 // 认证服务类
@@ -80,7 +81,7 @@ class AuthService {
 
       // 转换为User类型
       return {
-        user: this.mapPrismaUserToUser(user),
+        user: toApiUser(user),
         tokenVersion: user.token_version,
       };
     } catch (error) {
@@ -175,26 +176,7 @@ class AuthService {
 
     // 这里可以添加从Natayark获取最新信息的逻辑
     // 目前只返回数据库信息
-    return this.mapPrismaUserToUser(user);
-  }
-
-  /**
-   * 将Prisma用户转换为User类型
-   * @param prismaUser Prisma用户对象
-   * @returns User类型
-   */
-  private mapPrismaUserToUser(prismaUser: any): User {
-    return {
-      id: prismaUser.id,
-      natayark_id: prismaUser.natayark_id,
-      username: prismaUser.username,
-      email: prismaUser.email,
-      avatar: prismaUser.avatar || '',
-      role: prismaUser.role.toLowerCase() as Role,
-      created_at: prismaUser.created_at.toISOString(),
-      updated_at: prismaUser.updated_at.toISOString(),
-      status: prismaUser.status.toLowerCase() as Status,
-    };
+    return toApiUser(user);
   }
 }
 

@@ -1,6 +1,7 @@
-import { User, Role, Status } from '../types/user';
+import { User } from '../types/user';
 import prisma from '../config/database';
 import logger from '../utils/logger';
+import { toApiUser, toDbRole, toDbStatus } from '../mappers/user';
 
 // 用户服务类
 class UserService {
@@ -19,7 +20,7 @@ class UserService {
         return null;
       }
 
-      return this.mapPrismaUserToUser(user);
+      return toApiUser(user);
     } catch (error) {
       logger.error('获取用户失败:', error);
       throw new Error(`获取用户失败: ${error instanceof Error ? error.message : '未知错误'}`);
@@ -41,7 +42,7 @@ class UserService {
         return null;
       }
 
-      return this.mapPrismaUserToUser(user);
+      return toApiUser(user);
     } catch (error) {
       logger.error('根据natayark_id获取用户失败:', error);
       throw new Error(`获取用户失败: ${error instanceof Error ? error.message : '未知错误'}`);
@@ -68,7 +69,7 @@ class UserService {
       ]);
 
       return {
-        users: users.map(user => this.mapPrismaUserToUser(user)),
+        users: users.map(user => toApiUser(user)),
         total,
       };
     } catch (error) {
@@ -85,24 +86,21 @@ class UserService {
    */
   async updateUser(userId: number, data: Partial<Omit<User, 'id' | 'natayark_id' | 'created_at'>>): Promise<User> {
     try {
-      // 转换role和status为大写（Prisma枚举使用大写）
-      const updateData: any = { ...data };
-      if (data.role) {
-        updateData.role = data.role.toUpperCase();
-      }
-      if (data.status) {
-        updateData.status = data.status.toUpperCase();
-      }
+      // role / status 的方向转换集中在 mappers/user，此处不再手工 toUpperCase。
+      // 使用真值判断以保持与历史行为一致（API role/status 均为非空字符串）。
+      const { role, status, ...rest } = data;
 
       const user = await prisma.user.update({
         where: { id: userId },
         data: {
-          ...updateData,
+          ...rest,
+          ...(role && { role: toDbRole(role) as any }),
+          ...(status && { status: toDbStatus(status) as any }),
           updated_at: new Date(),
         },
       });
 
-      return this.mapPrismaUserToUser(user);
+      return toApiUser(user);
     } catch (error: any) {
       logger.error('更新用户失败:', error);
       // 邮箱唯一约束冲突
@@ -129,7 +127,7 @@ class UserService {
         },
       });
 
-      return this.mapPrismaUserToUser(user);
+      return toApiUser(user);
     } catch (error) {
       logger.error('更新用户头像失败:', error);
       throw new Error(`更新用户头像失败: ${error instanceof Error ? error.message : '未知错误'}`);
@@ -198,32 +196,13 @@ class UserService {
       ]);
 
       return {
-        users: users.map(user => this.mapPrismaUserToUser(user)),
+        users: users.map(user => toApiUser(user)),
         total,
       };
     } catch (error) {
       logger.error('搜索用户失败:', error);
       throw new Error(`搜索用户失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
-  }
-
-  /**
-   * 将Prisma用户转换为User类型
-   * @param prismaUser Prisma用户对象
-   * @returns User类型
-   */
-  private mapPrismaUserToUser(prismaUser: any): User {
-    return {
-      id: prismaUser.id,
-      natayark_id: prismaUser.natayark_id,
-      username: prismaUser.username,
-      email: prismaUser.email,
-      avatar: prismaUser.avatar || '',
-      role: prismaUser.role.toLowerCase() as Role,
-      created_at: prismaUser.created_at.toISOString(),
-      updated_at: prismaUser.updated_at.toISOString(),
-      status: prismaUser.status.toLowerCase() as Status,
-    };
   }
 }
 

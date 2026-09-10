@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import userService from '../services/user.service';
 import { validateRequest, validateIdParam, validatePagination } from '../utils/validator';
+import { isApiRole, isApiStatus } from '../mappers/user';
 import logger from '../utils/logger';
 
 /**
@@ -144,24 +145,24 @@ export const updateUser = async (req: Request, res: Response) => {
       updateData.avatar = avatar;
     }
     if (role !== undefined && req.user!.role === 'admin') {
-      // 角色必须为合法枚举值
-      if (!['admin', 'member'].includes(String(role).toLowerCase())) {
+      // 角色必须为合法枚举值（值域来自类型派生，不在此处硬编码字面量）
+      if (!isApiRole(role)) {
         return res.status(400).json({
           success: false,
           error: { code: 'VALIDATION_ERROR', message: '无效的角色值，必须为 admin 或 member' },
         });
       }
-      updateData.role = String(role).toLowerCase();
+      updateData.role = role.toLowerCase();
     }
     if (status !== undefined && req.user!.role === 'admin') {
       // 状态必须为合法枚举值
-      if (!['normal', 'banned', 'frozen'].includes(String(status).toLowerCase())) {
+      if (!isApiStatus(status)) {
         return res.status(400).json({
           success: false,
           error: { code: 'VALIDATION_ERROR', message: '无效的状态值，必须为 normal、banned 或 frozen' },
         });
       }
-      updateData.status = String(status).toLowerCase();
+      updateData.status = status.toLowerCase();
     }
 
     const user = await userService.updateUser(userId, updateData);
