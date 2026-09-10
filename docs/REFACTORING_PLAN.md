@@ -41,8 +41,8 @@ cd frontend && npx vue-tsc --build
 | 步骤 | 内容 | 类型 | 风险 | 状态 |
 |---|---|---|---|---|
 | 0 | 建立规划文档 | 文档 | 极低 | ✅ 已完成 |
-| 1 | 删除死配置与聚合导出层 | 清理 | 极低 | ⬜ 待执行 |
-| 2 | 清理仓库死代码与构建产物 | 清理 | 极低 | ⬜ 待执行 |
+| 1 | 删除死配置与聚合导出层 | 清理 | 极低 | ✅ 已完成 |
+| 2 | 清理仓库死代码与构建产物 | 清理 | 极低 | ✅ 已完成 |
 | 3 | 统一可选鉴权（修复授权漏洞） | 缺陷+安全 | 低 | ⬜ 待执行 |
 | 4 | 收敛用户/角色/状态映射 | 机制重复 | 中 | ⬜ 待执行 |
 | 5 | 引入领域错误类型，消除字符串匹配判定 | 机制重复 | 中 | ⬜ 待执行 |
@@ -120,23 +120,33 @@ cd frontend && npx vue-tsc --build
 
 ### 证据
 - `frontend/src/components/MusicBox.vue`（310 行），文件第一行自述：`<!-- 该文件已废弃，不在任何地方引用 -->`。
-- `backend/dist/` 下 18 个编译产物被跟踪进仓库（`.gitignore:23` 已列 `dist` 但仍被跟踪）。
+
+### 审查更正（执行时核实）
+原审查报告称"`backend/dist/` 下 18 个编译产物被跟踪进仓库"。**该判断有误，已核实为不成立**：
+- `git ls-files backend/dist` → 返回 0 条。
+- `git check-ignore -v backend/dist/src/index.js` → 命中 `backend/.gitignore:21:dist`。
+- `git ls-files '*.js'` → 全仓库 **0 个** `.js` 文件被跟踪。
+
+结论：`backend/dist` 只是本地构建产物目录，从未进入版本控制。`.gitignore` 已正确覆盖。
+因此本步**不需要**任何 `git rm --cached` 操作。规划文档在此更正，以避免后续步骤基于错误前提。
 
 ### 具体改动
-1. 删除 `frontend/src/components/MusicBox.vue`。
-2. `git rm -r --cached backend/dist` 并确认 `.gitignore` 已覆盖（已有）。
-3. `backend/src/index.ts` 的静态文件服务指向 `path.join(__dirname, '..', 'public')` —— 该路径基于 `dist/src/` 布局，**保持不变**（不在本步调整）。
+1. 删除 `frontend/src/components/MusicBox.vue`（唯一确认的死代码）。
+2. `backend/src/index.ts` 的静态文件服务指向 `path.join(__dirname, '..', 'public')` —— 该路径基于 `dist/src/` 布局，**保持不变**（不在本步调整）。
 
 ### 验证
 - `npx vue-tsc --build` exit 0（证明无引用）。
-- `git status` 确认 `backend/dist` 不再被跟踪，但工作区文件保留（本地开发不受影响）。
+- `git ls-files '*.js'` 仍为 0（确认无构建产物入库）。
+
+### 状态
+✅ 已完成
 
 ### 收益
-- 删除约 310 行死代码 + 移除 18 个构建产物出仓库。
+- 删除约 310 行死代码。
 - 消除"废弃文件被误改/误引用"的风险。
 
 ### 风险
-**极低**。`backend/dist` 仅从版本控制移除，本地文件仍在。
+**极低**。纯删除，且组件自述无引用、类型检查可证明。
 
 ---
 
@@ -828,6 +838,8 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 
 | 步骤 | 提交 | 日期 | 备注 |
 |---|---|---|---|
-| 0 | `待填` | — | 建立规划文档 |
+| 0 | `726b17e` | — | 建立规划文档（833 行） |
+| 1 | `c394a7d` | — | 删除 4 个聚合/死配置文件。`auth.service.ts` 的 `require()` 动态导入 hack 一并改为静态导入（同一腐烂模式）。类型检查通过。 |
+| 2 | `待填` | — | 删除 `MusicBox.vue`（310 行，自述废弃）。执行中发现审查报告关于 `backend/dist` 被跟踪的判断有误，已在文档中更正 —— 实际 `git ls-files '*.js'` 为 0。 |
 
 > 每步完成后在此表追加一行：步骤号、commit hash、日期、实施中的偏差或发现。
