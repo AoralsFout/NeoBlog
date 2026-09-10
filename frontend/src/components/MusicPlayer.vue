@@ -320,7 +320,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, nextTick, onUnmounted, computed } from 'vue'
+import { onMounted, ref, nextTick, onUnmounted, computed, watch } from 'vue'
 import { useThemeColors, parseHexColor } from '@/composables/useThemeColors'
 
 interface MusicItem {
@@ -399,21 +399,26 @@ const isMusicBoxOpen = ref<boolean>(false);                     // 音乐盒是�
 const musicBoxButtonIconImg = ref<HTMLElement | null>(null);    // 音乐盒展开收起按钮图标图片
 
 // 展开收起音乐盒
+// DOM 变换同步独立成函数：用户操作与"从缓存恢复"都走它，
+// 不再靠合成调用 toggleMusicBox() 来还原状态。
+const syncMusicBoxTransform = () => {
+    if (musicBox.value) {
+        musicBox.value.style.transform = isMusicBoxOpen.value
+            ? 'translateX(0px) scale(' + scale.value + ')'
+            : 'translateX(' + 800 * scale.value + 'px) scale(' + scale.value + ')';
+    }
+    if (musicBoxButtonIcon.value) {
+        musicBoxButtonIcon.value.style.transform = isMusicBoxOpen.value
+            ? 'translate(-50%, -50%) rotate(0deg)'
+            : 'translate(-50%, -50%) rotate(180deg)';
+    }
+}
+
 const toggleMusicBox = () => {
     // 动画通过 CSS transition 实现
-    // JavaScript 操作 DOM 元素的 style 属性来实现动画
-
-    // 音乐盒平移动画
-    if (musicBox.value) {
-        musicBox.value.style.transform = isMusicBoxOpen.value ? 'translateX(' + 800 * scale.value + 'px) scale(' + scale.value + ')' : 'translateX(0px) scale(' + scale.value + ')';
-    }
-    // 音乐盒展开收起按钮图标旋转动画
-    if (musicBoxButtonIcon.value) {
-        musicBoxButtonIcon.value.style.transform = isMusicBoxOpen.value ? 'translate(-50%, -50%) rotate(0deg)' : 'translate(-50%, -50%) rotate(180deg)';
-    }
-    // 更新音乐盒是否展开状态
     isMusicBoxOpen.value = !isMusicBoxOpen.value;
-    saveMusicState();
+    syncMusicBoxTransform();
+    // 状态持久化由下方统一的 watch 负责，此处不再逐个调用 save
 }
 
 /**
@@ -484,9 +489,11 @@ const loadMusicList = async () => {
                         resumeTime.value = cached.currentTime
                     }
                     switchMusic(index)
-                    // 恢复音乐盒展开状态
+                    // 恢复音乐盒展开状态：直接设置状态并同步 DOM，
+                    // 不再合成调用 toggleMusicBox()（那是在"重放用户操作"来达到某个状态）
                     if (cached.isMusicBoxOpen) {
-                        toggleMusicBox()
+                        isMusicBoxOpen.value = true
+                        nextTick(() => syncMusicBoxTransform())
                     }
                     return
                 }
@@ -614,9 +621,9 @@ const seekFromMediaSession = (position: number) => {
 
     const target = Math.min(Math.max(position, 0), audio.value.duration)
     audio.value.currentTime = target
+    // currentTime 的 watch 会同步 MediaSession 位置状态
     currentTime.value = target
     updateProgressBar()
-    updateMediaSessionPosition()
 }
 
 const registerMediaSessionAction = (action: MediaSessionAction, handler: MediaSessionActionHandler | null) => {
@@ -670,12 +677,10 @@ const clearMediaSession = () => {
 
 const handleMediaSessionPlay = () => {
     updateMediaSessionPlaybackState()
-    updateMediaSessionPosition()
 }
 
 const handleMediaSessionPause = () => {
     updateMediaSessionPlaybackState()
-    updateMediaSessionPosition()
 }
 
 // 加载音乐
@@ -707,10 +712,8 @@ const switchMusic = (index: number) => {
         applyColor();
         loadMusic();
     });
-    // 恢复缓存进度期间不保存状态，避免覆盖缓存中的播放时间
-    if (resumeTime.value === null) {
-        saveMusicState();
-    }
+    // 状态持久化由统一的 watch 负责；恢复缓存进度期间该 watch 也会被抑制
+    // （见 suppressPersistUntilReady），避免把 0 覆盖掉缓存中的播放时间。
 }
 
 // 播放&暂停音乐
@@ -721,7 +724,6 @@ const playPauseMusic = () => {
     } else {
         audio.value.pause();
     }
-    saveMusicState();
 }
 
 // 切换下一首音乐（按列表中的实际索引计算）
@@ -826,8 +828,7 @@ const changeVolume = () => {
         volumeTipTimer = setTimeout(() => {
             musicTip.value = '';
         }, 3000);
-
-        saveMusicState();
+        // 持久化由统一 watch 负责（volume 变化会被侦听到）
     }
 };
 
@@ -842,7 +843,7 @@ const switchPlayMode = (mode: PlayMode) => {
     playMode.value = mode;
     isVolumeControlVisible.value = false;
     applyToggleVolumeControlAnimation();
-    saveMusicState();
+    // 持久化由统一 watch 负责
 }
 
 // 音频播放结束事件处理
@@ -855,7 +856,6 @@ const handleAudioEnded = () => {
     } else if (playMode.value === 'stop') {
         audio.value.pause();
         currentTime.value = 0;
-        saveMusicState();
     } else if (playMode.value === 'order') {
         nextMusic();
     } else if (playMode.value === 'random') {
@@ -920,11 +920,12 @@ const handleLoadedMetadata = () => {
     if (resumePaused.value === true && audio.value) {
         audio.value.pause()
     }
+    // 缓存恢复流程结束
     resumePaused.value = null
     updateProgressBar()
     updateMediaSessionMetadata()
     updateMediaSessionPlaybackState()
-    updateMediaSessionPosition()
+    // MediaSession 位置由 currentTime 的 watch 同步，此处不再单独调用
 }
 
 // 处理进度条点击事件（直接跳转）
@@ -993,16 +994,9 @@ const translatedLyricElements = ref<Array<Element | null>>([]) // 翻译歌词�
 
 // 音频时间更新事件
 // 同时处理进度条和歌词显示
-let lastTimeSave = 0
 const handleTimeUpdate = () => {
     if (!audio.value) return
 
-    // 节流保存当前播放进度（每5秒）
-    const now = Date.now()
-    if (now - lastTimeSave >= 5000) {
-        lastTimeSave = now
-        saveMusicState()
-    }
     // 拖动过程中不更新时间
     if (!isDraggingProgressDot.value) {
         currentTime.value = audio.value.currentTime
@@ -1013,7 +1007,7 @@ const handleTimeUpdate = () => {
         }
         bufferedRanges.value = ranges
         updateProgressBar()
-        updateMediaSessionPosition()
+        // MediaSession 位置与持久化均由各自的 watch 统一处理
     }
 
     let activeIndex = -1
@@ -1162,11 +1156,31 @@ const effectsCanvas = ref<HTMLCanvasElement | null>(null)
 const isCoverHover = ref(false);
 // 主题色缓存：仅在主题变化时重新读取 CSS 变量，避免每帧 getComputedStyle
 const themeColors = useThemeColors();
-const audioCtx = new AudioContext();
-const analyser = audioCtx.createAnalyser();
+
+// 音频分析器懒创建：不再在 setup 阶段就 new AudioContext()
+// （避免未播放时占用音频硬件与上下文资源，部分浏览器也会警告）
+let audioCtx: AudioContext | null = null;
+let analyser: AnalyserNode | null = null;
 let source: MediaElementAudioSourceNode | null = null;
-analyser.connect(audioCtx.destination);
-analyser.fftSize = 512;
+
+/**
+ * 确保 AudioContext / analyser / MediaElementSource 就绪。
+ * createMediaElementSource 对同一元素只能调用一次，故用 source 作为哨兵。
+ */
+const ensureAnalyser = (): AnalyserNode | null => {
+    if (!audio.value) return null;
+    if (!audioCtx) {
+        audioCtx = new AudioContext();
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 512;
+        analyser.connect(audioCtx.destination);
+    }
+    if (!source) {
+        source = audioCtx.createMediaElementSource(audio.value);
+        source.connect(analyser!);
+    }
+    return analyser;
+};
 
 let audioAnimationFrameId: number | null = null;
 
@@ -1179,10 +1193,12 @@ const stopAudioAnimation = () => {
 
 const startAudioAnimation = () => {
     if (audioAnimationFrameId !== null) return;
+    if (!ensureAnalyser()) return;
     AudioAnimation();
 };
 
 const AudioAnimation = () => {
+    if (!analyser) return;
     // 获取频率数据
     const bufferLength = analyser.frequencyBinCount;
     const freData = new Uint8Array(bufferLength);
@@ -1290,11 +1306,7 @@ onMounted(() => {
         audio.value.addEventListener('play', handleMediaSessionPlay)
         audio.value.addEventListener('pause', handleMediaSessionPause)
     }
-    // 初始化音频分析器（频谱动画仅在播放时运行）
-    if (audio.value) {
-        source = audioCtx.createMediaElementSource(audio.value);
-        source.connect(analyser);
-    }
+    // 音频分析器改为首次播放时由 ensureAnalyser() 懒创建（见该函数注释）
     // 添加歌词容器滚动事件监听
     nextTick(() => {
         if (lyricsContainer.value) {
@@ -1310,9 +1322,85 @@ onMounted(() => {
 
 const handleVisibilityChange = () => {
     if (document.visibilityState === 'hidden') {
+        // 页面隐藏可能不再回来，取消防抖立即落盘
+        flushPersist()
+    }
+}
+
+/**
+ * 状态持久化：唯一的写入口。
+ *
+ * 历史上 saveMusicState() 被分散调用 6 处（展开/切歌/播放暂停/音量/播放模式/时间更新），
+ * 每新增一个可还原字段都要在多处补调用，容易漏。现改为侦听所有可还原字段，
+ * 统一防抖落盘。
+ *
+ * 防抖而非节流：缓存的进度只用于"下次打开时恢复到大致位置"，
+ * 不需要秒级精度，防抖可显著减少 localStorage 写入次数。
+ */
+let persistTimer: number | null = null
+const PERSIST_DEBOUNCE_MS = 1000
+
+/** 缓存恢复流程是否尚未完成（resumeTime 待应用或 resumePaused 待消费） */
+const isRestoringFromCache = () => resumeTime.value !== null || resumePaused.value !== null
+
+/**
+ * 取消待写入的防抖，并立刻落盘一次。
+ * 用于 visibilitychange / unmount：此时若还等防抖，写入会丢失。
+ */
+const flushPersist = () => {
+    if (persistTimer !== null) {
+        clearTimeout(persistTimer)
+        persistTimer = null
+    }
+    if (!isRestoringFromCache()) {
         saveMusicState()
     }
 }
+
+const schedulePersist = () => {
+    if (persistTimer !== null) {
+        clearTimeout(persistTimer)
+    }
+    persistTimer = window.setTimeout(() => {
+        persistTimer = null
+        // 缓存恢复尚未完成时不要落盘，否则会把 0 覆盖掉缓存中的播放进度；
+        // 重新排期，等恢复流程结束后再写。
+        if (isRestoringFromCache()) {
+            schedulePersist()
+            return
+        }
+        saveMusicState()
+    }, PERSIST_DEBOUNCE_MS)
+}
+
+watch(
+    () => [
+        volume.value,
+        playMode.value,
+        currentMusic.value?.id,
+        Math.floor(currentTime.value),
+        isMusicBoxOpen.value,
+        isTranslate.value,
+        audio.value?.paused,
+    ],
+    () => {
+        schedulePersist()
+    }
+)
+
+/**
+ * MediaSession 位置同步：唯一的触发点。
+ *
+ * 历史上 updateMediaSessionPosition() 被 5 处分别调用
+ * （timeupdate / loadedmetadata / seek / play / pause），
+ * 现改为侦听 currentTime，其余调用点已删除。
+ */
+watch(
+    () => currentTime.value,
+    () => {
+        updateMediaSessionPosition()
+    }
+)
 
 // 在组件卸载时移除事件监听
 onUnmounted(() => {
@@ -1345,9 +1433,21 @@ onUnmounted(() => {
     // 移除全局鼠标移动事件监听
     document.removeEventListener('mousemove', handleGlobalMouseMove)
     document.removeEventListener('mouseup', handleGlobalMouseUp)
-    // 清除定时器
+    // 清除所有定时器
+    // 注：volumeTipTimer 此前未在此处清理，属遗漏（同函数内清理了 userScrollTimer）
     if (userScrollTimer) {
         clearTimeout(userScrollTimer)
+    }
+    if (volumeTipTimer) {
+        clearTimeout(volumeTipTimer)
+    }
+    if (persistTimer !== null) {
+        clearTimeout(persistTimer)
+        persistTimer = null
+    }
+    // 卸载前落盘一次（跳过待写入则可能丢失最后一次变更）
+    if (!isRestoringFromCache()) {
+        saveMusicState()
     }
     // 移除页面可见性事件监听
     document.removeEventListener('visibilitychange', handleVisibilityChange)

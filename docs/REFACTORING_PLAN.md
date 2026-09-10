@@ -55,7 +55,7 @@ cd frontend && npx vue-tsc --build
 | 12 | 引入文章查询协调器 | 职责分散 | 中 | ✅ 已完成 |
 | 13 | 浏览计数从 GET 副作用分离 | 职责分散 | 中 | ✅ 已完成 |
 | 14 | 提取共享格式化/标签工具 | 机制重复 | 低 | ✅ 已完成 |
-| 15 | MusicPlayer 状态收敛（阶段一：只读订阅） | 时序耦合 | 中 | ⬜ 待执行 |
+| 15 | MusicPlayer 状态收敛（阶段一：只读订阅） | 时序耦合 | 中 | ✅ 已完成 |
 | 16 | MusicPlayer 引擎化（阶段二：单一状态源） | 时序耦合 | 高 | ⬜ 待执行 |
 
 ---
@@ -1086,23 +1086,60 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 
 ### 验证
 - `npx vue-tsc --build` exit 0。
-- **人工回归清单**：
-  1. 播放一首歌 → 系统媒体面板（Windows SMTC）显示曲名/艺术家/封面。
-  2. 用系统媒体键 播放/暂停/上一首/下一首/快进/快退/拖动 → 页面同步。
-  3. 拖动页面进度条 → 系统面板进度同步。
-  4. 调整音量 → localStorage 中的 `volume` 更新（DevTools 查看）。
-  5. 播放 30 秒后刷新页面 → 从缓存进度附近恢复，且**不从头播放**、**不被 5 秒节流覆盖为 0**。
-  6. 刷新后音乐盒展开状态与刷新前一致，且**图标旋转方向正确**。
-  7. 切换音量 → 3 秒后提示消失；离开页面（卸载组件）后定时器不残留（重复进入 5 次观察）。
-  8. 播放模式（顺序/单曲/随机/播完即止）逐个验证，刷新后模式保持。
-  9. 歌词滚动、翻译切换、频谱动画正常。
+- **已执行：写入口收敛静态验证**（脚本剔除注释后统计调用点）：
+
+  | 检查 | actual | expected | 结果 |
+  |---|---|---|---|
+  | `updateMediaSessionPosition()` 调用点 | 1 | 1 | ✅ 仅剩 `watch(currentTime)` 内 |
+  | `createMediaElementSource(` 调用点 | 1 | 1 | ✅ 仅在 `ensureAnalyser` 内 |
+  | `lastTimeSave` 残留 | 0 | 0 | ✅ 已删除 |
+  | `toggleMusicBox()` 带括号调用 | 0 | 0 | ✅ 不再有合成调用（模板 `@click` 绑定不计） |
+  | `saveMusicState()` 调用点 | 3 | 3 | ✅ `flushPersist` / `schedulePersist` 定时器体 / `onUnmounted`（原为 6 处分散调用） |
+
+  存在性检查全部 PASS：`syncMusicBoxTransform`、`isRestoringFromCache`、`flushPersist`、
+  `schedulePersist`、持久化 watch、MediaSession position watch、`volumeTipTimer` 清理、
+  `persistTimer` 清理、`ensureAnalyser`、`onMounted` 仍注册音频事件、模板仍绑定 `toggleMusicBox`。
+  移除性检查全部 PASS：setup 期 `new AudioContext()` 与 onMounted 内 eager 分析器初始化均已消失。
+
+  > 说明：首轮脚本期望 `saveMusicState` 为 2 处，误报了 1 处 FAIL。核实后确认
+  > 第 3 处是 `schedulePersist` 定时器回调内的合法调用，是我的期望值写错，非代码缺陷。
+
+- **未执行（本步最大缺口）**：所有浏览器/音频行为回归。本步改动集中在
+  播放状态的写入时机与资源生命周期，**无法用类型检查或 HTTP 探针覆盖**。
+  待补验清单（需真实浏览器 + 音频设备）：
+  1. 系统媒体面板（Windows SMTC）显示曲名/艺术家/封面。
+  2. 系统媒体键：播放/暂停/上一首/下一首/快进/快退/拖动 → 页面同步。
+  3. 拖动页面进度条 → 系统面板进度同步（验证 `watch(currentTime)` 生效）。
+  4. 调整音量 → localStorage 的 `volume` 更新。
+  5. 播放 30 秒后刷新 → 从缓存进度附近恢复，**不从头播放**、**不被覆盖为 0**
+     （验证 `isRestoringFromCache` 抑制逻辑）。
+  6. 刷新后音乐盒展开状态与图标旋转方向一致。
+  7. 切音量 → 3 秒后提示消失；反复进出页面 5 次观察计时器无残留。
+  8. 四种播放模式 + 刷新后模式保持。
+  9. 歌词滚动、翻译切换、频谱动画正常；**暂停时频谱停止**（验证懒创建后
+     `ensureAnalyser` 仍被正确调用）。
+
+### 状态
+✅ 已完成（类型检查 + 写入口收敛静态验证通过；**浏览器/音频行为回归待补验**）
 
 ### 收益
-- `saveMusicState` 调用点 6 → 1；MediaSession 同步点 5 → 1 组 watch。
-- 删除 1 个合成调用；修复 2 个资源泄漏。
+- `saveMusicState()` 调用点 6 → 3（且 3 处都是"统一写入口"的一部分，不再是散落的手工补调用）。
+- MediaSession 位置同步点 5 → 1（`watch(currentTime)`）。
+- 删除 `toggleMusicBox` 的合成调用（恢复状态改为直接设置状态 + 同步 DOM）。
+- 删除 `lastTimeSave` 与 `handleTimeUpdate` 内的 5 秒节流块（由统一防抖取代）。
+- 修复 2 个资源问题：`volumeTipTimer` 在 `onUnmounted` 中**未清理**（同函数清理了
+  `userScrollTimer`，属遗漏）；`AudioContext` 在 setup 阶段即创建，改为首次播放懒创建。
+- 新增 `flushPersist()`：`visibilitychange` 与 `unmounted` 时取消防抖立即落盘，
+  避免"最后一次变更丢失"（这是引入防抖后必须配套的补偿）。
 
 ### 风险
-**中**。`watch` 触发频率需控制（进度更新很频繁），必须配合防抖/节流，否则 localStorage 写入会显著增加。**不要在本步改动播放控制流**（`switchMusic`/`loadMusic`/`handleAudioEnded`），以隔离风险。
+**中**。改动集中在时序与资源生命周期，静态检查无法覆盖真实播放行为。
+已知的最大风险点是**缓存进度恢复**：防抖持久化若在恢复完成前落盘，会把 `0` 覆盖掉
+缓存中的进度。已用 `isRestoringFromCache()` 抑制 + 定时器重排 + 卸载/隐藏时 flush 三层处理，
+但**未经真实浏览器验证**。
+**未纳入本步（留给步 16）**：命令式 DOM 样式写入（`progressDot.style.left`、
+`musicBox.style.transform` 等）、歌词滚动用的 500ms/5s 语义补偿定时器、
+以及 `MusicPlayer` 直接 `fetch` 绕过 `utils/api.ts` 的问题。
 
 ---
 
@@ -1194,6 +1231,7 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 | 11 | `efbede1` | — | 布局改由 `data-layout` + CSS grid areas 拥有；删除 5 个 JS 状态与 resize 监听；`RightSidebar` 由 2 个挂载点收敛为 1 个（消除布局切换时的重复请求与计时器重建）。两栏时右栏位置的 9 组合目视核对待补验（残余风险最高项）。 |
 | 12 | `c019908` | — | 新增 `composables/useArticleQuery.ts`（路由 query 为唯一状态源，含竞态保护）；`Articles.vue` 本地 7 个状态清零，加载触发路径 2→1。URL 形态与真实标签过滤实测通过。有意的 URL 规范化：省略 `sort=time`/`page=1`。`ArticleDetail` 改造并入步 13。 |
 | 13 | `4dd4bef` | — | `GET /api/articles/:id` 改为纯读，新增 `POST /api/articles/:id/views` 显式计数；`exists()` 替代"取回正文只为判存在"。实测：GET 不改 views、POST 正确自增、编辑器不计、CRUD 与事务清理正常。旧 `?view=false` 参数被忽略且不报错。 |
-| 14 | `待填` | — | 新增 `utils/format.ts` 与 `utils/tags.ts`；日期格式化 5→1、标签解析 2→1、状态/角色文案收敛到映射表。新旧实现对拍 `TOTAL_MISMATCHES=0`。`CommentBox` 的 DOM 查询按范围收窄未改。 |
+| 14 | `8aa8d35` | — | 新增 `utils/format.ts` 与 `utils/tags.ts`；日期格式化 5→1、标签解析 2→1、状态/角色文案收敛到映射表。新旧实现对拍 `TOTAL_MISMATCHES=0`。`CommentBox` 的 DOM 查询按范围收窄未改。 |
+| 15 | `待填` | — | 持久化 6 处分散调用 → 统一防抖写入口（含恢复期抑制与 flush）；MediaSession 位置 5→1（`watch(currentTime)`）；去合成化 `toggleMusicBox`；修复 `volumeTipTimer` 未清理与 `AudioContext` 急创建。静态验证通过；**浏览器/音频回归待补验（本步最大缺口）**。 |
 
 > 每步完成后在此表追加一行：步骤号、commit hash、日期、实施中的偏差或发现。
