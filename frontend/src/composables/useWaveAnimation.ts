@@ -1,5 +1,6 @@
 import { onBeforeUnmount } from 'vue'
 import type { Ref } from 'vue'
+import { useThemeColors } from './useThemeColors'
 
 export function useWaveAnimation(waveCanvasRef: Ref<HTMLCanvasElement | null>) {
     let waveCtx: CanvasRenderingContext2D | null = null
@@ -12,6 +13,9 @@ export function useWaveAnimation(waveCanvasRef: Ref<HTMLCanvasElement | null>) {
     const secondaryWaveFrequency = 0.005    // 后方波浪频率
     const secondaryWaveSpeed = 0.005         // 后方波浪速度
     const secondaryWavePhase = Math.PI / 2  // 初始相位差90度
+
+    // 主题色缓存：仅在主题变化时重新读取 CSS 变量，避免每帧 getComputedStyle
+    const themeColors = useThemeColors()
 
     let animationFrameId: number | undefined = undefined
 
@@ -43,10 +47,9 @@ export function useWaveAnimation(waveCanvasRef: Ref<HTMLCanvasElement | null>) {
         // 清除画布
         waveCtx.clearRect(0, 0, width, height)
 
-        // 获取CSS颜色变量
-        const rootStyle = getComputedStyle(document.documentElement)
-        const bgSecondary = rootStyle.getPropertyValue('--bg-secondary').trim()
-        const colorPrimary = rootStyle.getPropertyValue('--color-primary').trim()
+        // 使用缓存的 CSS 颜色变量（不再每帧调用 getComputedStyle）
+        const bgSecondary = themeColors.value.bgSecondary
+        const colorPrimary = themeColors.value.primary
 
         // 绘制后方波浪（--color-primary）
         waveCtx.beginPath()

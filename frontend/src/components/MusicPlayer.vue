@@ -321,6 +321,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref, nextTick, onUnmounted, computed } from 'vue'
+import { useThemeColors, parseHexColor } from '@/composables/useThemeColors'
 
 interface MusicItem {
     id: number
@@ -1159,6 +1160,8 @@ const applyTogglePlayModeMenuAnimation = () => {
 const musicCover = ref<HTMLElement | null>(null)
 const effectsCanvas = ref<HTMLCanvasElement | null>(null)
 const isCoverHover = ref(false);
+// 主题色缓存：仅在主题变化时重新读取 CSS 变量，避免每帧 getComputedStyle
+const themeColors = useThemeColors();
 const audioCtx = new AudioContext();
 const analyser = audioCtx.createAnalyser();
 let source: MediaElementAudioSourceNode | null = null;
@@ -1219,12 +1222,8 @@ const drawAudio = (freData: Uint8Array) => {
         const width = effectsCanvas.value.width
         ctx.clearRect(0, 0, width, height)
 
-        // 获取 CSS 主题色
-        const style = getComputedStyle(document.documentElement)
-        const primaryColor = style.getPropertyValue('--color-primary').trim()
-        const r = parseInt(primaryColor.slice(1, 3), 16) || 100
-        const g = parseInt(primaryColor.slice(3, 5), 16) || 100
-        const b = parseInt(primaryColor.slice(5, 7), 16) || 255
+        // 使用缓存的 CSS 主题色（不再每帧 getComputedStyle）
+        const [r, g, b] = parseHexColor(themeColors.value.primary, [100, 100, 255])
 
         const centerX = width / 2
         const halfCount = Math.floor(freData.length / 2)

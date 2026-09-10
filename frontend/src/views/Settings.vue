@@ -63,20 +63,10 @@ import { computed } from 'vue';
 import { useThemeStore } from '@/stores/theme';
 import { useRadiusStore } from '@/stores/radius';
 import { useLayoutStore } from '@/stores/layout';
+import { RADIUS_OPTIONS, THEME_OPTIONS, type RadiusName, type ThemeName } from '@/utils/appearance';
 
-const themeOptions = [
-    { value: 'blue', label: '深海蓝', color: '#0066cc' },
-    { value: 'pink', label: '樱桃粉', color: '#eb2f96' },
-    { value: 'red', label: '信号红', color: '#cf1322' },
-    { value: 'green', label: '薄荷绿', color: '#00a86b' },
-    { value: 'dark', label: '夜航黑', color: '#6577a8' },
-];
-
-const radiusOptions = [
-    { value: 'small', label: '利落', preview: '4px' },
-    { value: 'medium', label: '平衡', preview: '10px' },
-    { value: 'large', label: '柔和', preview: '18px' },
-];
+const themeOptions = THEME_OPTIONS;
+const radiusOptions = RADIUS_OPTIONS;
 
 const themeStore = useThemeStore();
 const radiusStore = useRadiusStore();
@@ -86,8 +76,8 @@ const theme = computed(() => themeStore.theme);
 const radius = computed(() => radiusStore.radius);
 const layout = computed(() => layoutStore.layout);
 
-const changeTheme = (value: string) => themeStore.setTheme(value);
-const changeRadius = (value: string) => radiusStore.setRadius(value);
+const changeTheme = (value: ThemeName) => themeStore.setTheme(value);
+const changeRadius = (value: RadiusName) => radiusStore.setRadius(value);
 const changeLayout = (value: string) => layoutStore.setLayout(value);
 </script>
 

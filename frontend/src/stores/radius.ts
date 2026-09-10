@@ -1,46 +1,30 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
+import { DEFAULT_RADIUS, isRadiusName, type RadiusName } from "@/utils/appearance";
 
-const radiusArray = [
-    ["4px", "8px", "12px"],
-    ["8px", "12px", "16px"],
-    ["12px", "16px", "20px"]
-]
-
+/**
+ * 圆角偏好
+ *
+ * 历史：本 store 曾在 JS 中维护 radiusArray 表格并 switch 三档，
+ * 用 document.documentElement.style.setProperty 逐个写入 --radius-*。
+ * 现在只写一个 data-radius 属性，具体变量映射由 CSS 表达
+ * （见 assets/themes/root.css 的 [data-radius] 块），
+ * 与 data-theme 的下发方式保持一致。
+ */
 export const useRadiusStore = defineStore("radius", () => {
-    const radius = ref("small");
-    
+    const radius = ref<RadiusName>(DEFAULT_RADIUS);
+
     const initRadius = () => {
-        const savedRadius = localStorage.getItem("radius") || "small";
-        radius.value = savedRadius;
-        setRadius(savedRadius);
+        const saved = localStorage.getItem("radius");
+        setRadius(isRadiusName(saved) ? saved : DEFAULT_RADIUS);
     }
 
-    const setRadius = (radiusName?: string) => {
-        if (radiusName) {
-            radius.value = radiusName;
-        }
-        localStorage.setItem("radius", radius.value);
-        
-        let array: string[] = [];
-        switch (radius.value) {
-            case "small":
-                array = radiusArray[0]!;
-                break;
-            case "medium":
-                array = radiusArray[1]!;
-                break;
-            case "large":
-                array = radiusArray[2]!;
-                break;
-            default:
-                array = radiusArray[0]!; // 默认值
-        }
-        
-        document.documentElement.style.setProperty("--radius-small", array[0]!);
-        document.documentElement.style.setProperty("--radius-medium", array[1]!);
-        document.documentElement.style.setProperty("--radius-large", array[2]!);
+    const setRadius = (radiusName: RadiusName) => {
+        const next = isRadiusName(radiusName) ? radiusName : DEFAULT_RADIUS;
+        radius.value = next;
+        localStorage.setItem("radius", next);
+        document.documentElement.setAttribute("data-radius", next);
     }
 
-    return { radius, initRadius, setRadius };
+    return { radius, setRadius, initRadius };
 });

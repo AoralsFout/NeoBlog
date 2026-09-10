@@ -19,3 +19,28 @@
     --shadow-hover: 0 20px 48px rgba(31, 42, 68, 0.14);
     --focus-ring: 0 0 0 3px color-mix(in srgb, var(--color-primary) 30%, transparent);
 }
+
+/*
+ * 圆角档位
+ * 与主题色一样，由 JS 只写一个 data-* 属性，具体变量映射在 CSS 中表达。
+ * 取值来源：frontend/src/utils/appearance.ts 的 RADIUS_OPTIONS，
+ * 两处必须保持一致（改档位时同时更新）。
+ */
+:root,
+[data-radius="small"] {
+    --radius-small: 4px;
+    --radius-medium: 8px;
+    --radius-large: 12px;
+}
+
+[data-radius="medium"] {
+    --radius-small: 8px;
+    --radius-medium: 12px;
+    --radius-large: 16px;
+}
+
+[data-radius="large"] {
+    --radius-small: 12px;
+    --radius-medium: 16px;
+    --radius-large: 20px;
+}

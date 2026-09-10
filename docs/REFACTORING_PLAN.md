@@ -48,7 +48,7 @@ cd frontend && npx vue-tsc --build
 | 5 | 引入领域错误类型，消除字符串匹配判定 | 机制重复 | 中 | ✅ 已完成 |
 | 6 | 收敛会话启动流程，拆分 isLoading | 时序耦合 | 低-中 | ✅ 已完成 |
 | 7 | 统一 Markdown 渲染与目录大纲 | 职责分散 | 低 | ✅ 已完成 |
-| 8 | 统一外观下发通道（主题/圆角） | 机制重复 | 低 | ⬜ 待执行 |
+| 8 | 统一外观下发通道（主题/圆角） | 机制重复 | 低 | ✅ 已完成 |
 | 9 | 收敛时间段概念为纯函数 | 机制重复 | 低 | ⬜ 待执行 |
 | 10 | 表格化音乐服务，删除 Prisma 回退路径 | 机制重复 | 低 | ⬜ 待执行 |
 | 11 | 布局所有权移交 CSS | 分支膨胀 | 中 | ⬜ 待执行 |
@@ -558,20 +558,46 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 
 ### 验证
 - `npx vue-tsc --build` exit 0。
-- **人工回归清单**：
-  1. 设置页切换三种圆角 → 卡片/按钮/导航栏圆角实时变化，且**与预览图示一致**。
-  2. 刷新页面 → 圆角偏好保持。
-  3. 切换 5 种主题色 → 全局配色变化；首页波浪 canvas 与音乐播放器频谱**同步**变色（验证缓存失效正确）。
-  4. 三个圆角档位的实际像素值在改动前后**逐一对照**（用 DevTools 检查 `--radius-small` 计算值）。
-- **约束**：本步**不改变任何圆角的实际视觉取值**。
+- **已执行：CSS 与 TS 常量一致性检查**（脚本读取 `root.css` 的 `[data-radius]` 块并与
+  `appearance.ts` 的 `RADIUS_OPTIONS` 逐项比对）：
+
+  | 档位 | CSS 解析值 | TS 常量 | 一致 |
+  |---|---|---|---|
+  | small | `4px, 8px, 12px` | `4px, 8px, 12px` | ✅ |
+  | medium | `8px, 12px, 16px` | `8px, 12px, 16px` | ✅ |
+  | large | `12px, 16px, 20px` | `12px, 16px, 20px` | ✅ |
+  | `:root` 默认块 | 与 `small` 合并声明，未设 `data-radius` 时有兜底 | — | ✅ |
+
+  该项直接证明"圆角取值已收敛为单一来源"——改动前 JS 表格与 CSS 各自存在且与
+  `Settings.vue` 的预览值（`4/10/18px`）三者互不一致。
+
+- **未执行**：浏览器端目视回归（切换三档圆角、切换五种主题色后波浪与频谱同步变色）。
+  需要真实浏览器。已列入待补验清单。
+
+### 状态
+✅ 已完成（类型检查 + CSS/TS 一致性检查通过；浏览器目视回归待补验）
 
 ### 收益
-- CSS 变量写入通道 3 → 1；删除 `radiusArray` + `switch`（约 30 行）。
-- 主题/圆角常量重复 3 → 1；修复 `Settings.vue` 预览与实际值不一致的 bug。
-- 每帧 `getComputedStyle` 2 → 0。
+- CSS 变量写入通道：`data-theme`(属性) / `style.setProperty`(变量) / `getComputedStyle`(反读)
+  三条 → 统一为 `data-*` 属性下发（`--scroll-ratio` 除外，见下）。
+- 删除 `radius.ts` 的 `radiusArray` 表格 + `switch` 三档分支（约 30 行），改由 CSS 表达映射。
+- 主题/圆角常量重复 3 → 1（`utils/appearance.ts`）。
+- **修复可见 bug**：`Settings.vue` 的圆角预览值（10px/18px）与实际生效值（8px/12px）不一致。
+  预览改为取该档位的 `--radius-small`（4/8/12px），与真实值一致。
+- **顺带修复**：`stores/theme.ts` 从 `localStorage` 读取主题时未校验，
+  历史遗留的非法值会让 `data-theme` 指向不存在的主题块、页面丢失全部配色变量。现已回退到系统主题。
+- 每帧 `getComputedStyle` 2 → 0（`useWaveAnimation`、`MusicPlayer` 的频谱绘制改用
+  订阅主题变化并缓存的 `useThemeColors()`，令牌用 `MutationObserver` 兜底覆盖直接改属性的情况）。
 
 ### 风险
-**低**。`[data-radius]` 需要作用于 `:root`，注意 `root.css` 的加载顺序（`main.ts:9-14` 中 `root.css` 在最前，主题色文件在其后）。
+**低**。已用脚本证明 CSS/TS 取值一致，未引入圆角视觉变化
+（三档的实际像素值与改动前 `radius.ts` 完全相同）。
+
+**未纳入本步（记录待决）**：`Navigation.vue:109` 的
+`document.documentElement.style.setProperty('--scroll-ratio', ...)` 仍是内联变量写入通道。
+它是高频滚动写入，语义上属于"滚动进度"而非"外观偏好"，
+且 `--scroll-ratio` 被导航栏 CSS 的 `calc()` 大量依赖。
+本步未改动它，计划中将其归入步骤 11（布局）一并评估，以避免与布局改动冲突。
 
 ---
 
@@ -987,6 +1013,7 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 | 4 | `269d53e` | — | 新增 `backend/mappers/user.ts`，删除两份重复 mapper。关键验证：`/api/auth/me` 的 9 个字段完整性（`getUserProfile` 改为显式 select 后未丢字段）。前端侧枚举文案留待步 14。 |
 | 5 | `0e9bd86` | — | 新增 `backend/utils/errors.ts` 与统一错误中间件，4 处字符串匹配判定清零。发现并修复"409 分支不可达"缺陷（P4 由 500→409）。P2 语义错误（应为 400）刻意保留 500 并记录待决。 |
 | 6 | `55949f4` | — | 会话初始化入口 4→1（路由守卫）；`bootstrapped` 取代"用 currentUser 判幂等"；单一 `isLoading` 拆为 `isBootstrapping` + `pending.{logout,updateProfile,uploadAvatar}`。静态验证通过；浏览器回归清单待补验。`vite build` 受沙箱 `spawn EPERM` 限制未能执行。 |
-| 7 | `待填` | — | 新增 `utils/markdown.ts` 统一渲染与大纲提取；删除正则反解析与模块级计数器。**发现并修复既有缺陷**：旧代码的 `heading({text})` 在 marked v18 下使标题渲染为 `undefined`。保留 `articleStore` 传递大纲（provide/inject 回退方案）。 |
+| 7 | `0abfb2d` | — | 新增 `utils/markdown.ts` 统一渲染与大纲提取；删除正则反解析与模块级计数器。**发现并修复既有缺陷**：旧代码的 `heading({text})` 在 marked v18 下使标题渲染为 `undefined`。保留 `articleStore` 传递大纲（provide/inject 回退方案）。 |
+| 8 | `待填` | — | 新增 `utils/appearance.ts` + `composables/useThemeColors.ts`；圆角改由 `data-radius` + CSS 表达，删除 JS 表格与 switch。修复 `Settings.vue` 预览值与实际值不一致的 bug；顺带修复主题 store 未校验 localStorage 的问题。`--scroll-ratio` 留待步 11。 |
 
 > 每步完成后在此表追加一行：步骤号、commit hash、日期、实施中的偏差或发现。
