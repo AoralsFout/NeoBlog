@@ -1267,6 +1267,6 @@ HTTP 状态码由**错误消息文案**决定，业务判定建立在中文提�
 | 13 | `4dd4bef` | — | `GET /api/articles/:id` 改为纯读，新增 `POST /api/articles/:id/views` 显式计数；`exists()` 替代"取回正文只为判存在"。实测：GET 不改 views、POST 正确自增、编辑器不计、CRUD 与事务清理正常。旧 `?view=false` 参数被忽略且不报错。 |
 | 14 | `8aa8d35` | — | 新增 `utils/format.ts` 与 `utils/tags.ts`；日期格式化 5→1、标签解析 2→1、状态/角色文案收敛到映射表。新旧实现对拍 `TOTAL_MISMATCHES=0`。`CommentBox` 的 DOM 查询按范围收窄未改。 |
 | 15 | `324980d` | — | 持久化 6 处分散调用 → 统一防抖写入口（含恢复期抑制与 flush）；MediaSession 位置 5→1（`watch(currentTime)`）；去合成化 `toggleMusicBox`；修复 `volumeTipTimer` 未清理与 `AudioContext` 急创建。静态验证通过；**浏览器/音频回归待补验（本步最大缺口）**。 |
-| 16 | `待填` | — | **范围收窄**：交付 16b 中可独立验证的部分（`updateScale` 复用 `syncMusicBoxTransform`，消除与 `toggleMusicBox` 取反的重复表达式）；16c 的 `isTrusted` 方案经查证前提不成立，**已回滚并留档**。剩余 16b/16c/16d 与完整引擎化明确遗留，原因见步骤 16「验证」小节。 |
+| 16 | `6cdbd2d` | — | **范围收窄**：交付 16b 中可独立验证的部分（`updateScale` 复用 `syncMusicBoxTransform`，消除与 `toggleMusicBox` 取反的重复表达式）；16c 的 `isTrusted` 方案经查证前提不成立，**已回滚并留档**。剩余 16b/16c/16d 与完整引擎化明确遗留，原因见步骤 16「验证」小节。 |
 
 > 每步完成后在此表追加一行：步骤号、commit hash、日期、实施中的偏差或发现。
