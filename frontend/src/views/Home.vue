@@ -463,10 +463,12 @@ onBeforeUnmount(() => {
  * 两栏（用户偏好 2）
  * 右侧栏内容需要在左栏下方继续展示（历史实现是把 RightSidebar 挂到 .left 里），
  * 这里用 grid area 表达同一视觉结果，避免组件换位置重挂载：
- *   .right 横跨左栏与其后的间隙，因此其内部卡片与 .left 同宽。
+ * 第一行只按左栏内容定高，剩余高度交给第二行；否则跨行的主内容会撑高
+ * 两个 auto 行，在左栏卡片和右侧栏之间形成大段空白。
  */
 .layout[data-layout="2"] {
     grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
+    grid-template-rows: min-content 1fr;
     grid-template-areas:
         "left  main"
         "right main";
@@ -483,6 +485,7 @@ onBeforeUnmount(() => {
 @media (max-width: 1024px) {
     .layout[data-layout] {
         grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
+        grid-template-rows: min-content 1fr;
         grid-template-areas:
             "left  main"
             "right main";
@@ -495,6 +498,7 @@ onBeforeUnmount(() => {
     .layout[data-layout="2"],
     .layout[data-layout="3"] {
         grid-template-columns: 1fr;
+        grid-template-rows: none;
         grid-template-areas:
             "main"
             "left"
